@@ -1,9 +1,0 @@
-{
-    "Version": "1.1",
-    "Data": {
-        "Source": "c:\\users\\stasi\\source\\repos\\scyplib\\scyplib\\include\\glm\\glm.cppm",
-        "ProvidedModule": "glm",
-        "ImportedModules": [],
-        "ImportedHeaderUnits": []
-    }
-}
