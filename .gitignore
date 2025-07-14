@@ -41,6 +41,19 @@ compile_commands.json
 *.aps
 *.ncb
 *.sbr
+Debug/**/*.obj
+Debug/**/*.pdb
+Debug/**/*.exe
+Debug/**/*.lib
+Debug/**/*.ilk
+Debug/**/*.idb
+
+Release/**/*.obj
+Release/**/*.pdb
+Release/**/*.exe
+Release/**/*.lib
+Release/**/*.ilk
+Release/**/*.idb
 
 # Optional: Ignore backup/temporary files
 *~
