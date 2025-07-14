@@ -1,0 +1,52 @@
+# --- VS IDE files ---
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sdf
+*.opensdf
+*.VC.db
+
+# --- VS project files ---
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# --- Build output ---
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.idb
+*.log
+*.tlog
+*.pch
+*.res
+*.manifest
+
+# --- Folders ---
+[Bb]uild*/
+ipch/
+.vs/
+out/
+
+# --- CMake-generated ---
+CMakeFiles/
+CMakeCache.txt
+Makefile
+cmake_install.cmake
+compile_commands.json
+
+# --- Other ---
+*.aps
+*.ncb
+*.sbr
+
+# Optional: Ignore backup/temporary files
+*~
+*.bak
+*.tmp
+*.swp
+
+# --- Keep .lib files ---
+!*.lib
