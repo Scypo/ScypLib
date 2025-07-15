@@ -39,7 +39,7 @@
 5. Set language standard to c++20.
 
 6. Include Headers and Build:
-   Include ScypLib headers in your source files and build.
+   Include ScypLib, GLEW and GLFW headers in your source files and build.
 ---
 ## 🧰 Dependencies
 
@@ -54,7 +54,7 @@ ScypLib depends on the following open-source libraries:
 | [miniaudio](https://miniaud.io/)   | Audio playback                   | Public Domain / MIT            |
 | [glm](https://github.com/g-truc/glm)| Math library (vec/mat/quats)     | MIT                            |
 
-> ScypLib includes these libraries.
+> ScypLib does not includes GLFW and GLEW.
 
 ---
 ## 🕹️ Example Program
