@@ -54,7 +54,6 @@ ScypLib depends on the following open-source libraries:
 | [miniaudio](https://miniaud.io/)   | Audio playback                   | Public Domain / MIT            |
 | [glm](https://github.com/g-truc/glm)| Math library (vec/mat/quats)     | MIT                            |
 
-> ScypLib does not includes GLFW and GLEW.
 
 ---
 ## 🕹️ Example Program
