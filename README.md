@@ -20,25 +20,30 @@
 1. Add Include Directory:
    Add the path to ScypLib headers:
    <Path to ScypLib>/include
+   <Path to GLEW>/include
+   <Path to GLFW>/include
 
-2. Add Library Directory:
+3. Add Library Directory:
    Add the path to ScypLib libraries:
    <Path to ScypLib>/lib/x64/Release
+   <Path to GLEW>/GLEW/lib/Release/x64
+   <Path to GLFW>/GLFW/lib-vc2022
+   
 
-3. Link Libraries:
+4. Link Libraries:
    Link against these libraries:
    - ScypLib.lib
    - glfw3.lib
    - glew32s.lib
    - opengl32.lib
 
-4. Define Preprocessor Macro:
+5. Define Preprocessor Macro:
    Add the definition:
    GLEW_STATIC
 
-5. Set language standard to c++20.
+6. Set language standard to c++20.
 
-6. Include Headers and Build:
+7. Include Headers and Build:
    Include ScypLib, GLEW and GLFW headers in your source files and build.
 ---
 ## 🧰 Dependencies
