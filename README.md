@@ -13,7 +13,7 @@
 - 🖼️ Font rendering with stb_truetype
 - 🔉 Simple audio playback using miniaudio
 - 🗔 Window and input handling via GLFW
-
+- 🤖 Entity component system
 ---
 ## 🔧 Using ScypLib in Your Project
 
