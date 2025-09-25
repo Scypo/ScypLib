@@ -267,9 +267,10 @@ namespace sl
 	inline void Scene::UnregisterArchetype()
 	{
 		ArchetypeMask mask = GetArchetypeMask<ComponentTypes...>();
-		assert(archetypes.contains(mask));
+		assert(archetypes.contains(mask) && userCreatedArchetypes.contains(mask));
+		assert(archetypes[mask].get()->Empty());
 		archetypes.erase(mask);
-		if (userCreatedArchetypes.contains(mask)) userCreatedArchetypes.erase(mask);
+		userCreatedArchetypes.erase(mask);
 	}
 
 	template<typename Component>
