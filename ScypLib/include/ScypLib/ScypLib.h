@@ -5,4 +5,5 @@
 #include"Keyboard.h"
 #include"Logger.h"
 #include"Mouse.h"
+#include"EntityComponentSystem.h"
 #include"Graphics.h"

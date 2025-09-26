@@ -586,6 +586,7 @@ namespace sl
 
 	void Graphics::Render()
 	{
+		RectF canvasSize = GetCanvasRect();
 		if (!opaque.empty())
 		{
 			for (auto& [shader, renderables] : opaque)
@@ -593,7 +594,10 @@ namespace sl
 				currentShader = shader;
 				for (auto& renderable : renderables)
 				{
-					UploadRenderable(renderable.get());
+					RectF rect(renderable.get()->x, renderable.get()->x + renderable.get()->width,
+						renderable.get()->y, renderable.get()->y + renderable.get()->height);
+
+					if(canvasSize.IsOverlappingWith(rect)) UploadRenderable(renderable.get());
 				}
 				FlushBatch();
 			}
@@ -607,7 +611,10 @@ namespace sl
 				assert(shader);
 				for (auto& renderable : renderables)
 				{
-					sortedTransparent.emplace_back(shader, renderable.get());
+					RectF rect(renderable.get()->x, renderable.get()->x + renderable.get()->width,
+						renderable.get()->y, renderable.get()->y + renderable.get()->height);
+
+					if (canvasSize.IsOverlappingWith(rect)) sortedTransparent.emplace_back(shader, renderable.get());
 				}
 			}
 
