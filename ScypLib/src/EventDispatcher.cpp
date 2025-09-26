@@ -4,31 +4,36 @@
 
 namespace sl
 {
-    EventDispatcher::EventDispatcher(GLFWwindow* window)
-    {
-        SetupCallbacks(window);
-    }
-
     void EventDispatcher::SetupCallbacks(GLFWwindow* window)
     {
         glfwSetWindowUserPointer(window, this);
 
-        glfwSetKeyCallback(window, KeyCallback);
-        glfwSetCursorPosCallback(window, MouseMoveCallback);
-        glfwSetMouseButtonCallback(window, MouseButtonCallback);
-        glfwSetScrollCallback(window, MouseScrollCallback);
-        glfwSetCursorEnterCallback(window, MouseEnterCallback);
-        glfwSetWindowCloseCallback(window, WindowCloseCallback);
-        glfwSetFramebufferSizeCallback(window, SetFrameBufferSizeCallback);
-        glfwSetWindowMaximizeCallback(window, SetWindowMaximizeCallback);
-        glfwSetWindowPosCallback(window, SetWindowPosCallback);
+        if (kbd) glfwSetKeyCallback(window, KeyCallback);
+        if (mouse)
+        {
+            glfwSetCursorPosCallback(window, MouseMoveCallback);
+            glfwSetMouseButtonCallback(window, MouseButtonCallback);
+            glfwSetScrollCallback(window, MouseScrollCallback);
+            glfwSetCursorEnterCallback(window, MouseEnterCallback);
+        }
+        
+        if (wnd) 
+        {
+            glfwSetWindowCloseCallback(window, WindowCloseCallback);
+            glfwSetFramebufferSizeCallback(window, SetFrameBufferSizeCallback);
+            glfwSetWindowMaximizeCallback(window, SetWindowMaximizeCallback);
+            glfwSetWindowPosCallback(window, SetWindowPosCallback);
+        }
     }
 
     void EventDispatcher::PollEvents() const
     {
-        mouse->scrollOffset = { 0,0 };
-        mouse->empty = true;
-        kbd->empty = true;
+        if (mouse)
+        {
+            mouse->scrollOffset = { 0,0 };
+            mouse->empty = true;
+        }
+        if(kbd) kbd->empty = true;
         glfwPollEvents();
     }
 
@@ -49,7 +54,9 @@ namespace sl
 
     EventDispatcher::EventDispatcher(Keyboard* kbd, Mouse* mouse, Window* wnd)
         : kbd(kbd), mouse(mouse), wnd(wnd)
-    {}
+    {
+        SetupCallbacks(wnd->GetGLFWWindow());
+    }
 
     void EventDispatcher::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
     {

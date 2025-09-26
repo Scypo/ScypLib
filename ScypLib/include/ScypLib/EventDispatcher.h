@@ -8,7 +8,6 @@ namespace sl
 	class EventDispatcher
 	{
 	public:
-		EventDispatcher(GLFWwindow* window);
 		EventDispatcher(Keyboard* kbd, Mouse* mouse, Window* wnd);
 		EventDispatcher() = default;
 		~EventDispatcher() = default;
