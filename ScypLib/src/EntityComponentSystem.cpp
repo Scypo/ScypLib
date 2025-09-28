@@ -94,6 +94,19 @@ namespace sl
         entitiesToMask[entity] = newMask;
     }
 
+    void Scene::RunSystems(float dt)
+    {
+        for (auto& [id, system] : systems)
+        {
+            system.get()->Run(dt, *this);
+        }
+    }
+
+    EventBus& Scene::GetEventBus()
+    {
+        return eventBus;
+    }
+
     void Scene::DestroyEntity(EntityId entity)
     {
         archetypes[entitiesToMask[entity]].get()->RemoveEntity(entity);
@@ -186,5 +199,21 @@ namespace sl
     bool Scene::Archetype::Empty()
     {
         return entityIdToIndex.empty();
+    }
+    EventId EventBus::GenerateEventId()
+    {
+        static EventId id = 0;
+        return id++;
+    }
+    void EventBus::DispatchAll()
+    {
+        for (auto& [id, eventQ] : events)
+        {
+            eventQ->Dispatch();
+        }
+    }
+    void EventBus::Clear()
+    {
+        events.clear();
     }
 }

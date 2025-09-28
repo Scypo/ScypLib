@@ -16,6 +16,43 @@ namespace sl
 	using ArchetypeMask = std::bitset<MAX_COMPONENTS>;
 	using ComponentId = uint32_t;
 	using SystemId = uint32_t;
+	using EventId = uint32_t;
+
+	class EventBus
+	{
+	private:
+		struct EventQueueBase
+		{
+			EventQueueBase() = default;
+			virtual void Dispatch() = 0;
+		};
+
+		template<typename EventType>
+		struct EventQueue : public EventQueueBase
+		{
+			void Dispatch() override;
+			std::queue<EventType> events;
+			std::vector<std::function<void(EventType&)>> subscribers;
+		};
+
+	private:
+		EventId GenerateEventId();
+		template<typename EventType>
+		EventId GetEventId();
+	public:
+		void DispatchAll();
+		template<typename EventType>
+		void Dispatch();
+		template<typename EventType>
+		void Subscribe(std::function<void(EventType& callback)>);
+		template<typename EventType>
+		void Emit(const EventType& event);
+		template<typename EventType>
+		EventQueue<EventType>* GetEventQueue();
+		void Clear();
+	public:
+		std::unordered_map<EventId, std::unique_ptr<EventQueueBase>> events;
+	};
 
 	class System;
 	class Scene
@@ -93,6 +130,8 @@ namespace sl
 		void MoveEntity(EntityId entity, const ArchetypeMask& newMask);
 		template<typename ...Components, typename Func>
 		void ForEach(Func&& func);
+		void RunSystems(float dt);
+		EventBus& GetEventBus();
 
 		void DestroyEntity(EntityId entity);
 		template<typename Component>
@@ -111,6 +150,7 @@ namespace sl
 		std::unordered_map<ArchetypeMask, std::unique_ptr<Archetype>> archetypes;
 		std::unordered_set<ArchetypeMask> userCreatedArchetypes;
 		std::unordered_map<SystemId, std::unique_ptr<System>> systems;
+		EventBus eventBus;
 	};
 
 	class System
@@ -365,5 +405,63 @@ namespace sl
 		assert(src);
 		assert(destIndex < components.size() && srcIndex < src->Size());
 		components[destIndex] = static_cast<ComponentArray<T>*>(src)->components[srcIndex];
+	}
+
+	template<typename EventType>
+	inline EventId EventBus::GetEventId()
+	{
+		static EventId id = GenerateEventId();
+		return id;
+	}
+
+	template<typename EventType>
+	inline void EventBus::Dispatch()
+	{
+		EventId id = GetEventId<EventType>();
+		events[id].get()->Dispatch();
+	}
+
+	template<typename EventType>
+	inline void EventBus::Subscribe(std::function<void(EventType&)> callback)
+	{
+		EventId id = GetEventId<EventType>();
+		if (!events.contains(id))
+		{
+			events[id] = std::make_unique<EventQueue<EventType>>();
+		}
+
+		auto queue = static_cast<EventQueue<EventType>*>(events[id].get());
+		queue->subscribers.push_back(std::move(callback));
+	}
+
+	template<typename EventType>
+	inline void EventBus::Emit(const EventType& event)
+	{
+		EventId id = GetEventId<EventType>();
+		assert(events.contains(id));
+		static_cast<EventQueue<EventType>*>(events[id].get())->events.push(event);
+	}
+
+	template<typename EventType>
+	inline EventBus::EventQueue<EventType>* EventBus::GetEventQueue()
+	{
+		EventId id = GetEventId<EventType>();
+		assert(events.contains(id));
+		return events[id].get();
+	}
+
+	template<typename EventType>
+	inline void EventBus::EventQueue<EventType>::Dispatch()
+	{
+		while (!events.empty())
+		{
+			EventType event = events.front();
+			events.pop();
+
+			for (auto& func : subscribers)
+			{
+				func(event);
+			}
+		}
 	}
 }

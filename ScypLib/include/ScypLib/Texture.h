@@ -3,6 +3,7 @@
 
 #include<GL/glew.h>
 
+#include"Color.h"
 namespace sl
 {
 	enum class TextureFilter
@@ -31,8 +32,8 @@ namespace sl
 		Texture(const std::string& path, TextureWrap wrap = TextureWrap::ClampToEdge, TextureFilter minFilter = TextureFilter::Nearest, TextureFilter magFilter = TextureFilter::Nearest);
 		~Texture();
 
-		inline int GetWidth() const { return width; }
-		inline int GetHeight() const { return height; }
+		int GetWidth() const { return width; }
+		int GetHeight() const { return height; }
 		unsigned int GetHandle() const { return handle; }
 		int GetChannels() const { return BPP; }
 		bool IsBinaryAlpha() const { return binaryAlpha; }
