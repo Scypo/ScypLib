@@ -196,7 +196,7 @@ namespace sl
         indexToEntityId.pop_back();
     }
 
-    bool Scene::Archetype::Empty()
+    bool Scene::Archetype::Empty() const
     {
         return entityIdToIndex.empty();
     }

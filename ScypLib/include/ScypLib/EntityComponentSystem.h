@@ -98,7 +98,7 @@ namespace sl
 			~Archetype() = default;
 			void AddEntity(EntityId entity);
 			void RemoveEntity(EntityId entity);
-			bool Empty();
+			bool Empty() const;
 		public:
 			std::unordered_map<ComponentId, size_t> componentIdToIndex;
 			std::vector<EntityId> indexToEntityId;
