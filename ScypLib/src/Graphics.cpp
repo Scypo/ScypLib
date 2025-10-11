@@ -166,7 +166,7 @@ namespace sl
 	void Graphics::BeginFrame()
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-		glViewport(0, 0, canvasWidth, canvasHeight);
+		glViewport(0, 0, GetCanvasWidth(), GetCanvasHeight());
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
@@ -201,7 +201,10 @@ namespace sl
 	void Graphics::BeginView(Vec2f cameraPosition, float zoom)
 	{
 		vpMat.view = glm::mat4(1.0f);
+		Vec2f center = Vec2f(GetCanvasWidth() / 2.0f, GetCanvasHeight() / 2.0f);
+		vpMat.view = glm::translate(vpMat.view, glm::vec3(center.x, center.y, 0.0f));
 		vpMat.view = glm::scale(vpMat.view, glm::vec3(zoom, zoom, 1.0f));
+		vpMat.view = glm::translate(vpMat.view, glm::vec3(-center.x, -center.y, 0.0f));
 		vpMat.view = glm::translate(vpMat.view, glm::vec3(-cameraPosition.x, -cameraPosition.y, 0.0f));
 		BindUniformBuffer(vpMatUbo);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
@@ -210,19 +213,26 @@ namespace sl
 	void Graphics::EndView(std::vector<Shader*>& shaders)
 	{
 		Render();
+		vpMat.view = glm::mat4(1.0f);
+		BindUniformBuffer(vpMatUbo);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
 		ApplyPostProcessing(shaders);
 	}
 
 	void Graphics::EndView(Shader* shader)
 	{
 		Render();
+		vpMat.view = glm::mat4(1.0f);
+		BindUniformBuffer(vpMatUbo);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
 		glDisable(GL_DEPTH_TEST);
 		if (!shader) shader = defaultShader;
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferTextureSecondary->GetHandle(), 0);
-		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferTexture->GetHandle(), 0);
 		DrawTexture(GetCanvasRect(), framebufferTexture, shader);
+		Render();
+		std::swap(framebufferTexture, framebufferTextureSecondary);
 		glEnable(GL_DEPTH_TEST);
 	}
 
@@ -265,7 +275,7 @@ namespace sl
 			Render();
 			std::swap(currentTarget, otherTarget);
 		}
-		if (currentTarget != framebufferTexture) glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferTexture->GetHandle(), 0);
+		if (otherTarget != framebufferTexture) std::swap(framebufferTexture, framebufferTextureSecondary);
 		glEnable(GL_DEPTH_TEST);
 	}
 

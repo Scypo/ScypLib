@@ -132,6 +132,10 @@ namespace sl
 		void ForEach(Func&& func);
 		void RunSystems(float dt);
 		EventBus& GetEventBus();
+		template<typename SystemType>
+		void SuspendSystem();
+		template<typename SystemType>
+		void UnsuspendSystem();
 
 		void DestroyEntity(EntityId entity);
 		template<typename Component>
@@ -150,6 +154,8 @@ namespace sl
 		std::unordered_map<ArchetypeMask, std::unique_ptr<Archetype>> archetypes;
 		std::unordered_set<ArchetypeMask> userCreatedArchetypes;
 		std::unordered_map<SystemId, std::unique_ptr<System>> systems;
+		std::vector<System*> systemOrder;
+		std::unordered_set<System*> suspendedSystems;
 		EventBus eventBus;
 	};
 
@@ -214,6 +220,7 @@ namespace sl
 	inline void Scene::RegisterSystem()
 	{
 		systems[GetSystemId<SystemType>()] = std::make_unique<SystemType>();
+		systemOrder.push_back(systems[GetSystemId<SystemType>()].get());
 	}
 
 	template<typename ...ComponentTypes>
@@ -269,6 +276,20 @@ namespace sl
 		}
 	}
 
+	template<typename SystemType>
+	inline void Scene::SuspendSystem()
+	{
+		suspendedSystems.insert(systems[GetSystemId<SystemType>()].get());
+	}
+
+	template<typename SystemType>
+	inline void Scene::UnsuspendSystem()
+	{
+		SystemId id = GetSystemId<SystemType>();
+		assert(suspendedSystems.contains(id));
+		suspendedSystems.erase(id);
+	}
+
 	template<typename Component>
 	inline void Scene::RemoveComponent(EntityId entity)
 	{
@@ -300,7 +321,14 @@ namespace sl
 	template<typename SystemType>
 	inline void Scene::UnregisterSystem()
 	{
-		systems.erase(GetSystemId<SystemType>());
+		SystemId id = GetSystemId<SystemType>();
+		assert(systems.contains(id));
+		if (suspendedSystems.contains(id)) suspendedSystems.erase(id);
+		auto it = systems.find(id);
+		System* ptr = it->second.get();
+		auto vecIt = std::find(systemOrder.begin(), systemOrder.end(), ptr);
+		suspendedSystems.erase(ptr);
+		systems.erase(it);
 	}
 
 	template<typename ...ComponentTypes>
