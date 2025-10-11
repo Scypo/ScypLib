@@ -7,6 +7,8 @@ namespace sl
     class Rect
     {
     public:
+        Rect() 
+            : left(T{}), right(T{}), top(T{}), bottom(T{}) {}
         Rect(T left, T right, T top, T bottom)
             : left(left), right(right), top(top), bottom(bottom) {}
 
@@ -16,6 +18,13 @@ namespace sl
         Rect(const Vec2<T>& topLeft, T width, T height)
             : Rect(topLeft, topLeft + Vec2<T>(width, height)) {}
 
+        void Translate(const Vec2<T>& v)
+        {
+            left += v.x;
+            right += v.x;
+            top += v.y;
+            bottom == v.y;
+        }
         bool IsOverlappingWith(const Rect& other) const
         {
             return right > other.left && left < other.right &&

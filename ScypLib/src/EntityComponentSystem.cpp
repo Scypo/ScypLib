@@ -96,9 +96,9 @@ namespace sl
 
     void Scene::RunSystems(float dt)
     {
-        for (auto& [id, system] : systems)
+        for (System* system : systemOrder)
         {
-            system.get()->Run(dt, *this);
+            if(!suspendedSystems.contains(system)) system->Run(dt, *this);
         }
     }
 
