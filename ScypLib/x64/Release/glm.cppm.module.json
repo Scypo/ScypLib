@@ -1,0 +1,22 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "x64\\Release\\glm.cppm.obj",
+            "outputs": [
+                "C:\\Users\\stasi\\source\\repos\\ScypLib\\ScypLib\\lib\\x64\\Release\\ScypLib.pdb",
+                "x64\\Release\\",
+                "C:\\Users\\stasi\\source\\repos\\ScypLib\\ScypLib\\x64\\Release\\glm.cppm.ifc"
+            ],
+            "provides": [
+                {
+                    "logical-name": "glm",
+                    "source-path": "c:\\users\\stasi\\source\\repos\\scyplib\\scyplib\\include\\glm\\glm.cppm",
+                    "is-interface": true
+                }
+            ],
+            "requires": []
+        }
+    ]
+}
