@@ -200,6 +200,8 @@ namespace sl
 
 	void Graphics::BeginView(Vec2f cameraPosition, float zoom)
 	{
+		cameraPos = cameraPosition;
+		cameraZoom = zoom;
 		vpMat.view = glm::mat4(1.0f);
 		Vec2f center = Vec2f(GetCanvasWidth() / 2.0f, GetCanvasHeight() / 2.0f);
 		vpMat.view = glm::translate(vpMat.view, glm::vec3(center.x, center.y, 0.0f));
@@ -214,6 +216,8 @@ namespace sl
 	{
 		Render();
 		vpMat.view = glm::mat4(1.0f);
+		cameraPos = { 0.0f,0.0f };
+		cameraZoom = 1.0f;
 		BindUniformBuffer(vpMatUbo);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
 		ApplyPostProcessing(shaders);
@@ -223,6 +227,8 @@ namespace sl
 	{
 		Render();
 		vpMat.view = glm::mat4(1.0f);
+		cameraPos = { 0.0f,0.0f };
+		cameraZoom = 1.0f;
 		BindUniformBuffer(vpMatUbo);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
 		glDisable(GL_DEPTH_TEST);
@@ -596,6 +602,10 @@ namespace sl
 
 	void Graphics::Render()
 	{
+		Vec2f visibleSize(GetCanvasWidth() / cameraZoom, GetCanvasHeight() / cameraZoom);
+		Vec2f cameraCenter = cameraPos + Vec2f(GetCanvasWidth() / 2, GetCanvasHeight() / 2);
+		RectF visibleArea(cameraCenter - visibleSize / 2, visibleSize.x, visibleSize.y);
+
 		if (!opaque.empty())
 		{
 			for (auto& [shader, renderables] : opaque)
@@ -606,7 +616,7 @@ namespace sl
 					RectF rect(renderable.get()->x, renderable.get()->x + renderable.get()->width,
 						renderable.get()->y, renderable.get()->y + renderable.get()->height);
 
-					UploadRenderable(renderable.get());
+					if(visibleArea.IsOverlappingWith(rect)) UploadRenderable(renderable.get());
 				}
 				FlushBatch();
 			}
@@ -623,7 +633,7 @@ namespace sl
 					RectF rect(renderable.get()->x, renderable.get()->x + renderable.get()->width,
 						renderable.get()->y, renderable.get()->y + renderable.get()->height);
 
-					sortedTransparent.emplace_back(shader, renderable.get());
+					if (visibleArea.IsOverlappingWith(rect)) sortedTransparent.emplace_back(shader, renderable.get());
 				}
 			}
 

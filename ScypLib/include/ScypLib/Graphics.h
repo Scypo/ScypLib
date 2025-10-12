@@ -128,7 +128,9 @@ namespace sl
         Window* window = nullptr;
         float canvasWidth = -1.0f;
         float canvasHeight = -1.0f;
-        //framebuffer
+        //framebuffer and camera
+        Vec2f cameraPos = { 0.0f,0.0f };
+        float cameraZoom = 1.0f;
         unsigned int fbo;
         unsigned int rbo;
         Texture* framebufferTexture = nullptr;
