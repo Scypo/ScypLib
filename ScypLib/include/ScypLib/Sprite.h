@@ -71,11 +71,11 @@ namespace sl
 		{
 			this->size = size;
 		}
-		void SetNDCUV(const RectF& uv)
+		void SetUV(const RectF& uv)
 		{
 			this->uv = uv;
 		}
-		void SetUV(const RectF& uv)
+		void SetPixelUV(const RectF& uv)
 		{
 			assert(texture);
 			this->uv = uv / Vec2f(float(texture->GetWidth()), float(texture->GetHeight()));
@@ -154,7 +154,7 @@ namespace sl
 		AnimatedSprite(int frameWidth, int frameHeight, float animationTime, Texture* texture)
 			: Sprite(texture), animation(frameWidth, frameHeight, animationTime, texture)
 		{
-			SetUV(animation.GetCurrentUV());
+			SetPixelUV(animation.GetCurrentUV());
 		}
 		AnimatedSprite(Texture* texture, Animation& animation)
 			: Sprite(texture), animation(animation) {}
@@ -163,12 +163,12 @@ namespace sl
 		void Update(float dt)
 		{
 			animation.Update(dt);
-			SetUV(animation.GetCurrentUV());
+			SetPixelUV(animation.GetCurrentUV());
 		}
 		void AdvanceFrames(int n)
 		{
 			animation.AdvanceFrames(n);
-			SetUV(animation.GetCurrentUV());
+			SetPixelUV(animation.GetCurrentUV());
 		}
 		void SetAnimation(Animation& animation)
 		{

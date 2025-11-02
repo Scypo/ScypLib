@@ -157,6 +157,7 @@ namespace sl
 		std::vector<System*> systemOrder;
 		std::unordered_set<System*> suspendedSystems;
 		EventBus eventBus;
+		std::vector<EntityId> entitiesToBeDestroyed;
 	};
 
 	class System

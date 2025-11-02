@@ -100,6 +100,12 @@ namespace sl
         {
             if(!suspendedSystems.contains(system)) system->Run(dt, *this);
         }
+        for (EntityId id : entitiesToBeDestroyed)
+        {
+            archetypes[entitiesToMask[id]].get()->RemoveEntity(id);
+            entitiesToMask.erase(id);
+            availableId.push(id);
+        }
     }
 
     EventBus& Scene::GetEventBus()
@@ -109,9 +115,7 @@ namespace sl
 
     void Scene::DestroyEntity(EntityId entity)
     {
-        archetypes[entitiesToMask[entity]].get()->RemoveEntity(entity);
-        entitiesToMask.erase(entity);
-        availableId.push(entity);
+        entitiesToBeDestroyed.push_back(entity);
     }
 
     ComponentId Scene::GenerateComponentId()
