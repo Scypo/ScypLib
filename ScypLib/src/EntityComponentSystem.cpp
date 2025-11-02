@@ -106,6 +106,7 @@ namespace sl
             entitiesToMask.erase(id);
             availableId.push(id);
         }
+        entitiesToBeDestroyed.clear();
     }
 
     EventBus& Scene::GetEventBus()
