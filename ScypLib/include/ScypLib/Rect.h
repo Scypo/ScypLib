@@ -15,15 +15,15 @@ namespace sl
         Rect(const Vec2<T>& topLeft, const Vec2<T>& bottomRight)
             : Rect(topLeft.x, bottomRight.x, topLeft.y, bottomRight.y) {}
 
-        Rect(const Vec2<T>& topLeft, T width, T height)
-            : Rect(topLeft, topLeft + Vec2<T>(width, height)) {}
+        Rect(const Vec2<T>& pos, T width, T height)
+            : Rect(pos, pos + Vec2<T>(width, height)) {}
 
         void Translate(const Vec2<T>& v)
         {
             left += v.x;
             right += v.x;
             top += v.y;
-            bottom == v.y;
+            bottom += v.y;
         }
         bool IsOverlappingWith(const Rect& other) const
         {

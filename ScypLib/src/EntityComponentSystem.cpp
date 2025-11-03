@@ -63,6 +63,11 @@ namespace sl
         return entitiesToMask.contains(entity);
     }
 
+    bool Scene::IsEntityAlive(EntityId entity) const
+    {
+        return !entitiesToBeDestroyed.contains(entity);
+    }
+
     void Scene::MoveEntity(EntityId entity, const ArchetypeMask& newMask)
     {
         if (archetypes[newMask].get() && archetypes[newMask].get()->entityIdToIndex.contains(entity)) return;
@@ -116,7 +121,7 @@ namespace sl
 
     void Scene::DestroyEntity(EntityId entity)
     {
-        entitiesToBeDestroyed.push_back(entity);
+        entitiesToBeDestroyed.insert(entity);
     }
 
     ComponentId Scene::GenerateComponentId()

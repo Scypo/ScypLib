@@ -125,6 +125,7 @@ namespace sl
 		template<typename Component>
 		Component& GetComponent(EntityId entity);
 		bool IsEntityValid(EntityId entity) const;
+		bool IsEntityAlive(EntityId entity) const;
 		template<typename Component>
 		bool HasComponent(EntityId entity);
 		void MoveEntity(EntityId entity, const ArchetypeMask& newMask);
@@ -157,7 +158,7 @@ namespace sl
 		std::vector<System*> systemOrder;
 		std::unordered_set<System*> suspendedSystems;
 		EventBus eventBus;
-		std::vector<EntityId> entitiesToBeDestroyed;
+		std::unordered_set<EntityId> entitiesToBeDestroyed;
 	};
 
 	class System
