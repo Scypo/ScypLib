@@ -118,6 +118,8 @@ namespace sl
             sl::Logger::GetInstance().Log(level, msg);              \
             if ((level) == sl::LogLevel::Error) DEBUG_BREAK();  \
         } while (0)
+    #endif
+
     #define LOG_INFO(msg) LOG_MESSAGE(sl::LogLevel::Info, msg)
     #define LOG_DEBUG(msg) LOG_MESSAGE(sl::LogLevel::Debug, msg)
     #define LOG_WARN(msg) LOG_MESSAGE(sl::LogLevel::Warning, msg)
@@ -130,4 +132,3 @@ namespace sl
             sl::Logger::GetInstance().Log(level, buf);              \
             if ((level) == sl::LogLevel::Error) DEBUG_BREAK();      \
         } while (0)
-    #endif
