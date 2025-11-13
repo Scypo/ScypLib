@@ -15,7 +15,7 @@ namespace sl
     bool EntityComponentSystem::SwitchScenes(const std::string& newSceneName, bool destroyPrev)
     {
         assert(scenes.contains(newSceneName));
-        if (newCurrentScene) return false;
+        if (newCurrentScene || scenes[newSceneName].get() == currentScene) return false;
         
         newCurrentScene = scenes[newSceneName].get();
         destroyCurrentScene = destroyPrev;
