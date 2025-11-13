@@ -149,7 +149,7 @@ namespace sl
 	private:
 		SystemId GenerateSystemId();
 		ComponentId GenerateComponentId();
-	public:
+	private:
 		std::unordered_map<EntityId, ArchetypeMask> entitiesToMask;
 		std::priority_queue<EntityId, std::vector<EntityId>, std::greater<EntityId>> availableId;
 		std::unordered_map<ArchetypeMask, std::unique_ptr<Archetype>> archetypes;
@@ -176,13 +176,21 @@ namespace sl
 
 		Scene* GetCurrentScene();
 		Scene* GetScene(const std::string& sceneName);
-		void SetCurrentScene(const std::string& sceneName);
+		bool SwitchScenes(const std::string& newSceneName, bool destroyPrev = false);
+		bool SwitchScenes(Scene* newScene, bool destroyPrev = false);
 		void CreateScene(const std::string& sceneName);
 		void RemoveScene(const std::string& sceneName);
+		void RemoveScene(Scene* scene);
+		const std::string& GetSceneName(Scene* scene);
 		void Clear();
+		void Run(float dt);
+		bool Empty() const;
 	private:
 		std::unordered_map<std::string, std::unique_ptr<Scene>> scenes;
+		std::unordered_map<Scene*, std::string> addressToSceneName;
 		Scene* currentScene = nullptr;
+		bool destroyCurrentScene = false;
+		Scene* newCurrentScene = nullptr;
 	};
 
 	template<typename Component>

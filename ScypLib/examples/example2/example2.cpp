@@ -78,7 +78,6 @@ int main()
     sl::FrameTimer ft;
 
     ecs.CreateScene("main");
-    ecs.SetCurrentScene("main");
     sl::Scene* scene = ecs.GetScene("main");
 
     for (int y = 0; y < gfx.GetCanvasHeight(); y += 4)
@@ -102,8 +101,7 @@ int main()
     {
         float dt = ft.Mark();
 
-        scene->systems[scene->GetSystemId<UpdateSystem>()]->Run(dt, *scene);
-        scene->systems[scene->GetSystemId<DrawSystem>()]->Run(dt, *scene);
+        ecs.Run(dt);
         
         ed.PollEvents();
     }

@@ -12,30 +12,79 @@ namespace sl
         return scenes[sceneName].get();
     }
 
-    void EntityComponentSystem::SetCurrentScene(const std::string& sceneName)
+    bool EntityComponentSystem::SwitchScenes(const std::string& newSceneName, bool destroyPrev)
     {
-        assert(scenes.contains(sceneName));
-        currentScene = scenes[sceneName].get();
+        assert(scenes.contains(newSceneName));
+        if (newCurrentScene) return false;
+        
+        newCurrentScene = scenes[newSceneName].get();
+        destroyCurrentScene = destroyPrev;
+        return true;
+    }
+
+    bool EntityComponentSystem::SwitchScenes(Scene* newScene, bool destroyPrev)
+    {
+        assert(addressToSceneName.contains(newScene));
+        return SwitchScenes(addressToSceneName[newScene], destroyPrev);
     }
 
     void EntityComponentSystem::CreateScene(const std::string& sceneName)
     {
         bool wasEmpty = scenes.empty();
         scenes[sceneName] = std::make_unique<Scene>();
+        addressToSceneName[scenes[sceneName].get()] = sceneName;
         if (wasEmpty) currentScene = scenes[sceneName].get();
     }
 
     void EntityComponentSystem::RemoveScene(const std::string& sceneName)
     {
         assert(scenes.contains(sceneName));
-        if (currentScene == scenes[sceneName].get()) currentScene = nullptr;
+        assert(currentScene != scenes[sceneName].get());
+        assert(newCurrentScene != scenes[sceneName].get());
+        addressToSceneName.erase(scenes[sceneName].get());
         scenes.erase(sceneName);
+    }
+
+    void EntityComponentSystem::RemoveScene(Scene* scene)
+    {
+        assert(addressToSceneName.contains(scene));
+        RemoveScene(addressToSceneName[scene]);
+    }
+
+    const std::string& EntityComponentSystem::GetSceneName(Scene* scene)
+    {
+        assert(addressToSceneName.contains(scene));
+        return addressToSceneName[scene];
     }
 
     void EntityComponentSystem::Clear()
     {
         currentScene = nullptr;
         scenes.clear();
+        addressToSceneName.clear();
+    }
+
+    void EntityComponentSystem::Run(float dt)
+    {
+        if (newCurrentScene)
+        {
+            if (destroyCurrentScene)
+            {
+                std::string oldName = addressToSceneName[currentScene];
+                addressToSceneName.erase(currentScene);
+                scenes.erase(oldName);
+                destroyCurrentScene = false;
+            }
+            currentScene = newCurrentScene;
+            newCurrentScene = nullptr;
+        }
+        assert(currentScene);
+        currentScene->RunSystems(dt);
+    }
+
+    bool EntityComponentSystem::Empty() const
+    {
+        return scenes.empty();
     }
 
     EntityId Scene::CreateEntity()
