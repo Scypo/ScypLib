@@ -430,7 +430,7 @@ namespace sl
 		else transparent[shader].emplace_back(std::move(renderable));
 	}
 
-	void Graphics::DrawText(float x, float y, const std::string& text, Font* font, float height, const Color& c)
+	void Graphics::DrawText(sl::Vec2f pos, const std::string& text, Font* font, float height, const Color& c)
 	{
 		if (!font) font = defaultFont;
 		assert(font->GetTextureAtlas() && "Failed to draw text. Font atlas is nullptr");
@@ -441,19 +441,20 @@ namespace sl
 		float baseLineHeight = font->GetLineHeight();
 
 		float scale = height / baseLineHeight;
-		float xCursor = x;
-		float yCursor = y + scale * float(font->GetAscent() / font->GetLineHeight()) - height * scale;
-
 		for (char ch : text)
 		{
 			if (ch < font->GetFirstChar() || ch >= font->GetLastChar()) continue;
 			stbtt_aligned_quad quad;
-			stbtt_GetBakedQuad(charData.data(), atlas->GetWidth(), atlas->GetHeight(), ch - font->GetFirstChar(), &xCursor, &yCursor, &quad, 1);
-			float quadWidth = (quad.x1 - quad.x0) * scale;
-			float quadHeight = (quad.y1 - quad.y0) * scale;
-			Vec2f drawPos = Vec2f(quad.x0 * scale, quad.y0 * scale);
+			Vec2f cursorPos = pos;
+			stbtt_GetBakedQuad(charData.data(), atlas->GetWidth(), atlas->GetHeight(), ch - font->GetFirstChar(), &cursorPos.x, &cursorPos.y, &quad, 1);
+			Vec2f size((quad.x1 - quad.x0) * scale, (quad.y1 - quad.y0) * scale);
 			RectF uv(quad.s0 * atlas->GetWidth(), quad.s1 * atlas->GetWidth(), quad.t1 * atlas->GetHeight(), quad.t0 * atlas->GetHeight());
-			DrawTexture(drawPos, Vec2f(quadWidth, quadHeight), atlas, nullptr, false, false, 0.0f, Vec2f(0, 0), &uv, c);
+
+			pos.y += (baseLineHeight * scale - size.y);
+			DrawTexture(pos, size, atlas, nullptr, false, false, 0.0f, Vec2f(0, 0), &uv, c);
+
+			pos.y -= (baseLineHeight * scale - size.y);
+			pos.x += size.x;
 		}
 	}
 
