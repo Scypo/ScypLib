@@ -81,6 +81,7 @@ namespace sl
 
 		builtInShader = LoadShader(vertexShader, fragmentShader, false);
 		SetDefaultShader(builtInShader);
+		currentShader = defaultShader;
 
 		glGenVertexArrays(1, &vao);
 		BindVertexArray(vao);
@@ -652,7 +653,6 @@ namespace sl
 			{
 				if (shader != currentShader)
 				{
-					assert(shader);
 					FlushBatch();
 					currentShader = shader;
 				}
@@ -803,7 +803,7 @@ namespace sl
 				buffer[i * 4 + 2] = 255;
 				buffer[i * 4 + 3] = a;
 			}
-			Texture* atlas = CreateTextureFromMemory(texWidth, texHeight, 4, buffer.data(), TextureWrap::ClampToEdge, TextureFilter::LinearMipmapLinear, TextureFilter::Linear);
+			Texture* atlas = CreateTextureFromMemory(texWidth, texHeight, 4, buffer.data(), TextureWrap::ClampToEdge, TextureFilter::Linear, TextureFilter::Linear);
 			fonts[filepath] = std::make_unique<Font>(atlas, std::move(charData), realLineHeight, ascent, firstChar, lastChar);
 		}
 		return fonts[filepath].get();
