@@ -459,6 +459,38 @@ namespace sl
 		}
 	}
 
+	void Graphics::DrawText(const RectF& rect, const std::string& text, Font* font, const Color& c)
+	{
+		const auto& charData = font->GetCharData();
+		char firstChar = font->GetFirstChar();
+		char lastChar = font->GetLastChar();
+
+		float width = 0.0f;
+		float maxHeight = 0.0f;
+
+		for (char ch : text)
+		{
+			if (ch < firstChar || ch >= lastChar) continue;
+			const auto& bc = charData[size_t(ch - firstChar)];
+			width += float(bc.x1 - bc.x0);
+			maxHeight = std::max(maxHeight, float(bc.y1 - bc.y0));
+		}
+
+		if (width <= 0.0f || maxHeight <= 0.0f) return;
+
+		float scale = std::min(rect.GetWidth() / width, rect.GetHeight() / maxHeight);
+
+		Vec2f scaledSize(width * scale, maxHeight * scale);
+		Vec2f start(rect.left + (rect.GetWidth() - scaledSize.x) * 0.5f , rect.top + (rect.GetHeight() - scaledSize.y) * 0.5f);
+
+		DrawText(start, text, font, scaledSize.y, c);
+	}
+
+	void Graphics::DrawText(Vec2f pos, Vec2f size, const std::string& text, Font* font, const Color& c)
+	{
+		DrawText(RectF(pos, size.x, size.y), text, font, c);
+	}
+
 	void Graphics::PutPixel(float x, float y, const Color& c)
 	{
 		auto renderable = std::make_unique<Renderable>(x, y, curDrawLayer, 1.0f, 1.0f, RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, glm::mat4(1.0f), c);
@@ -803,7 +835,7 @@ namespace sl
 				buffer[i * 4 + 2] = 255;
 				buffer[i * 4 + 3] = a;
 			}
-			Texture* atlas = CreateTextureFromMemory(texWidth, texHeight, 4, buffer.data(), TextureWrap::ClampToEdge, TextureFilter::Linear, TextureFilter::Linear);
+			Texture* atlas = CreateTextureFromMemory(texWidth, texHeight, 4, buffer.data(), TextureWrap::ClampToEdge, TextureFilter::Nearest, TextureFilter::Nearest);
 			fonts[filepath] = std::make_unique<Font>(atlas, std::move(charData), realLineHeight, ascent, firstChar, lastChar);
 		}
 		return fonts[filepath].get();

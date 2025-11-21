@@ -98,7 +98,9 @@ namespace sl
         void DrawRect(Vec2f pos, Vec2f size, const Color& c);
         void DrawRect(Vec2f pos, Vec2f size, const Color& c, float angle, Shader* shader = nullptr);
         void DrawRect(const RectF& rect, const Color& c, float angle, Shader* shader = nullptr);
-        void DrawText(sl::Vec2f pos, const std::string& text, Font* font, float height, const Color& c);
+        void DrawText(Vec2f pos, const std::string& text, Font* font, float height, const Color& c);
+        void DrawText(const RectF& rect, const std::string& text, Font* font, const Color& c);
+        void DrawText(Vec2f pos, Vec2f size, const std::string& text, Font* font, const Color& c);
         void PutPixel(float x, float y, const Color& c);
 
         Color GetPixel(int x, int y);
