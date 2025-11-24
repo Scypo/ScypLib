@@ -107,6 +107,7 @@ namespace sl
         RectF GetCanvasRect()const;
         float GetCanvasWidth()const;
         float GetCanvasHeight()const;
+        Vec2f GetCanvasSize()const;
     public:
         void BindShader(unsigned int shader);
         void BindShaderStorageBuffer(unsigned int ssbo);

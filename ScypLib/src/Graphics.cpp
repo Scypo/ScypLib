@@ -175,7 +175,10 @@ namespace sl
 	void Graphics::EndFrame(Shader* shader)
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		glViewport(0, 0, window->GetWidth(), window->GetHeight());
+		float scale = window->GetHeight() / GetCanvasHeight();
+		float width = GetCanvasWidth() * scale;
+		float pillar = (float(window->GetWidth()) - width) * 0.5f;
+		glViewport(pillar, 0, width, window->GetHeight());
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDisable(GL_DEPTH_TEST);
@@ -523,6 +526,11 @@ namespace sl
 	float Graphics::GetCanvasHeight() const
 	{
 		return canvasHeight;
+	}
+
+	Vec2f Graphics::GetCanvasSize() const
+	{
+		return Vec2f(canvasWidth, canvasHeight);
 	}
 
 	void Graphics::UpdateCanvasSize(float width, float height)
