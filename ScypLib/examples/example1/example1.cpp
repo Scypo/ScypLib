@@ -17,7 +17,7 @@ int main()
     ed.SetWindow(&wnd);
     ed.SetKeyboard(&kbd);
     ed.SetMouse(&mouse);
-    ed.SetupCallbacks(&wnd);
+    ed.SetupCallbacks();
 
     // Load resources
     sl::Texture* texture = gfx.LoadTexture("knight.png");

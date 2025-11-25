@@ -1,6 +1,5 @@
 #pragma once
 #include <queue>
-#include <GLFW/glfw3.h>
 #include "Vec2.h"
 
 namespace sl
