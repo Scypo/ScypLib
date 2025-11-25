@@ -1,28 +1,26 @@
 #pragma once
 #include<string>
 
-#include<GL/glew.h>
-
 #include"Color.h"
 namespace sl
 {
 	enum class TextureFilter
 	{
-		Nearest = GL_NEAREST,
-		Linear = GL_LINEAR,
-		NearestMipmapNearest = GL_NEAREST_MIPMAP_NEAREST,
-		LinearMipmapNearest = GL_LINEAR_MIPMAP_NEAREST,
-		NearestMipmapLinear = GL_NEAREST_MIPMAP_LINEAR,
-		LinearMipmapLinear = GL_LINEAR_MIPMAP_LINEAR
+		Nearest,
+		Linear,
+		NearestMipmapNearest,
+		LinearMipmapNearest,
+		NearestMipmapLinear,
+		LinearMipmapLinear
 	};
 
 	enum class TextureWrap
 	{
-		ClampToEdge = GL_CLAMP_TO_EDGE,
-		ClampToBorder = GL_CLAMP_TO_BORDER,
-		Repeat = GL_REPEAT,
-		MirroredRepeat = GL_MIRRORED_REPEAT,
-		MirrorClampToEdge = GL_MIRROR_CLAMP_TO_EDGE
+		ClampToEdge,
+		ClampToBorder,
+		Repeat,
+		MirroredRepeat,
+		MirrorClampToEdge
 	};
 
 	class Texture

@@ -1,5 +1,5 @@
 #include<cassert>
-
+#include<array>
 #define STB_IMAGE_IMPLEMENTATION
 #include"stb/stb_image.h"
 #define STB_TRUETYPE_IMPLEMENTATION
@@ -7,6 +7,25 @@
 #include<GL/glew.h>
 
 #include"ScypLib/Texture.h"
+
+static constexpr std::array<GLint, 5> glfwWrap =
+{
+	GL_CLAMP_TO_EDGE,
+	GL_CLAMP_TO_BORDER,
+	GL_REPEAT,
+	GL_MIRRORED_REPEAT,
+	GL_MIRROR_CLAMP_TO_EDGE
+};
+
+static constexpr std::array<GLint, 6> glfwFilter =
+{
+	GL_NEAREST,                
+	GL_LINEAR,                 
+	GL_NEAREST_MIPMAP_NEAREST, 
+	GL_LINEAR_MIPMAP_NEAREST,  
+	GL_NEAREST_MIPMAP_LINEAR,  
+	GL_LINEAR_MIPMAP_LINEAR
+};
 
 namespace sl
 {
@@ -35,10 +54,10 @@ namespace sl
 		glGenTextures(1, &handle);
 		glBindTexture(GL_TEXTURE_2D, handle);
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, unsigned int(minFilter));
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, unsigned int(magFilter));
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, unsigned int(wrap));
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, unsigned int(wrap));
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, glfwFilter[int(minFilter)]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, glfwFilter[int(magFilter)]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, glfwWrap[int(wrap)]);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, glfwWrap[int(wrap)]);
 
 		if (BPP == 4) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (const void*)buffer);
 		else if (BPP == 3) glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, (const void*)buffer);
