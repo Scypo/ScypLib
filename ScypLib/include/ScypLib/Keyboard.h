@@ -17,8 +17,8 @@ namespace sl
         bool KeyIsPressed(char character) const;
         void Flush();
         bool IsEmpty() const;
-        void ProcessKeyState(int key, int action);
     private:
+        void ProcessKeyState(int key, int action);
         int CharToKey(char character) const;
     private:
         static constexpr unsigned int nKeys = GLFW_KEY_LAST + 1;

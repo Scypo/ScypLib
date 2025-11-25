@@ -1,5 +1,7 @@
 #include<glm/glm.hpp>
 #include<glm/gtc/type_ptr.hpp>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 #include"ScypLib/Graphics.h"
 
@@ -185,7 +187,7 @@ namespace sl
 		if (!shader) shader = defaultShader;
 		DrawTexture(GetCanvasRect(), framebufferTexture, shader);
 		Render();
-		glfwSwapBuffers(window->GetGLFWWindow());
+		glfwSwapBuffers(reinterpret_cast<GLFWwindow*>(window->GetWindowBackend()));
 		glEnable(GL_DEPTH_TEST);
 	}
 
@@ -198,7 +200,7 @@ namespace sl
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		DrawTexture(GetCanvasRect(), framebufferTexture, defaultShader);
 		Render();
-		glfwSwapBuffers(window->GetGLFWWindow());
+		glfwSwapBuffers(reinterpret_cast<GLFWwindow*>(window->GetWindowBackend()));
 		glEnable(GL_DEPTH_TEST);
 	}
 
@@ -246,9 +248,9 @@ namespace sl
 		glEnable(GL_DEPTH_TEST);
 	}
 
-	void Graphics::SetDrawLayer(float layer)
+	void Graphics::SetDrawDepth(float layer)
 	{
-		curDrawLayer = layer;
+		curDrawDepth = layer;
 	}
 
 	void Graphics::SetCanvasSize(Vec2f size)
@@ -303,7 +305,7 @@ namespace sl
 	void Graphics::DrawTexture(float x, float y, const Texture* texture)
 	{
 		assert(texture && "Failed to draw texture. Texture is nullptr");
-		auto renderable = std::make_unique<Renderable>(x, y, curDrawLayer, float(texture->GetWidth()), float(texture->GetHeight()), RectF(0.0f, 1.0f, 0.0f, 1.0f),
+		auto renderable = std::make_unique<Renderable>(x, y, curDrawDepth, float(texture->GetWidth()), float(texture->GetHeight()), RectF(0.0f, 1.0f, 0.0f, 1.0f),
 			texture, glm::mat4(1.0f), Colors::White);
 		if (texture->IsBinaryAlpha()) opaque[defaultShader].emplace_back(std::move(renderable));
 		else transparent[defaultShader].emplace_back(std::move(renderable));
@@ -324,7 +326,7 @@ namespace sl
 			transform = glm::rotate(transform, glm::radians(angle), glm::vec3(0.0f, 0.0f, 1.0f));
 			transform = glm::translate(transform, glm::vec3(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
 		}
-		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawLayer, size.x, size.y, finalUV, texture, transform, tint);
+		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawDepth, size.x, size.y, finalUV, texture, transform, tint);
 		if (texture->IsBinaryAlpha() && (tint.a == 1.0f || tint.a == 0.0f)) opaque[shader].emplace_back(std::move(renderable));
 		else transparent[shader].emplace_back(std::move(renderable));
 	}
@@ -350,7 +352,7 @@ namespace sl
 			transform = glm::rotate(transform, glm::radians(sprite.GetRotation()), glm::vec3(0.0f, 0.0f, 1.0f));
 			transform = glm::translate(transform, glm::vec3(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
 		}
-		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawLayer, size.x, size.y, sprite.GetNDCUV(), sprite.GetTexture(), transform, sprite.GetColorTint());
+		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawDepth, size.x, size.y, sprite.GetNDCUV(), sprite.GetTexture(), transform, sprite.GetColorTint());
 
 		if (sprite.GetTexture()->IsBinaryAlpha() && (sprite.GetColorTint().a == 1.0f || sprite.GetColorTint().a == 0.0f)) opaque[shader].emplace_back(std::move(renderable));
 		else transparent[shader].emplace_back(std::move(renderable));
@@ -376,7 +378,7 @@ namespace sl
 			transform = glm::rotate(transform, glm::radians(animatedSprite.GetRotation()), glm::vec3(0.0f, 0.0f, 1.0f));
 			transform = glm::translate(transform, glm::vec3(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
 		}
-		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawLayer, size.x, size.y, animatedSprite.GetNDCUV(), animatedSprite.GetTexture(), transform, animatedSprite.GetColorTint());
+		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawDepth, size.x, size.y, animatedSprite.GetNDCUV(), animatedSprite.GetTexture(), transform, animatedSprite.GetColorTint());
 
 		if (animatedSprite.GetTexture()->IsBinaryAlpha() && (animatedSprite.GetColorTint().a == 1.0f || animatedSprite.GetColorTint().a == 0.0f)) opaque[shader].emplace_back(std::move(renderable));
 		else transparent[shader].emplace_back(std::move(renderable));
@@ -393,7 +395,7 @@ namespace sl
 		glm::mat4 transform = glm::mat4(1.0f);
 		transform = glm::rotate(transform, angle, glm::vec3(0.0f, 0.0f, 1.0f));
 
-		auto renderable = std::make_unique<Renderable>(x1, y1 - thickness / 2.0f, curDrawLayer, length, thickness, RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, transform, c);
+		auto renderable = std::make_unique<Renderable>(x1, y1 - thickness / 2.0f, curDrawDepth, length, thickness, RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, transform, c);
 
 		if (c.a == 0.0f || c.a == 1.0f) opaque[shader].emplace_back(std::move(renderable));
 		else transparent[shader].emplace_back(std::move(renderable));
@@ -402,7 +404,7 @@ namespace sl
 	void Graphics::DrawRect(const RectF& rect, const Color& c)
 	{
 		glm::mat4 transform(1.0f);
-		auto renderable = std::make_unique<Renderable>(rect.left, rect.top, curDrawLayer, float(rect.GetWidth()), float(rect.GetHeight()),
+		auto renderable = std::make_unique<Renderable>(rect.left, rect.top, curDrawDepth, float(rect.GetWidth()), float(rect.GetHeight()),
 			RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, transform, c);
 		if (c.a == 0.0f || c.a == 1.0f) opaque[defaultShader].emplace_back(std::move(renderable));
 		else transparent[defaultShader].emplace_back(std::move(renderable));
@@ -428,7 +430,7 @@ namespace sl
 		transform = glm::rotate(transform, glm::radians(angle), glm::vec3(0.0f, 0.0f, 1.0f));
 		transform = glm::translate(transform, glm::vec3(-center.x, -center.y, 0.0f));
 
-		auto renderable = std::make_unique<Renderable>(rect.left, rect.top, curDrawLayer, float(rect.GetWidth()), float(rect.GetHeight()),
+		auto renderable = std::make_unique<Renderable>(rect.left, rect.top, curDrawDepth, float(rect.GetWidth()), float(rect.GetHeight()),
 			RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, transform, c);
 		if (c.a == 0.0f || c.a == 1.0f) opaque[shader].emplace_back(std::move(renderable));
 		else transparent[shader].emplace_back(std::move(renderable));
@@ -496,7 +498,7 @@ namespace sl
 
 	void Graphics::PutPixel(float x, float y, const Color& c)
 	{
-		auto renderable = std::make_unique<Renderable>(x, y, curDrawLayer, 1.0f, 1.0f, RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, glm::mat4(1.0f), c);
+		auto renderable = std::make_unique<Renderable>(x, y, curDrawDepth, 1.0f, 1.0f, RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, glm::mat4(1.0f), c);
 		if (c.a == 1.0f) opaque[defaultShader].emplace_back(std::move(renderable));
 		else transparent[defaultShader].emplace_back(std::move(renderable));
 	}

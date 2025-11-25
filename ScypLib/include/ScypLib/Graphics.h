@@ -71,7 +71,7 @@ namespace sl
         void BeginView(Vec2f cameraPosition = { 0.0f, 0.0f }, float zoom = 1.0f);
         void EndView(std::vector<Shader*>& shaders);
         void EndView(Shader* shader = nullptr);
-        void SetDrawLayer(float layer);
+        void SetDrawDepth(float depth);
         void SetCanvasSize(Vec2f size);
         void SetCanvasWidth(float width);
         void SetCanvasHeight(float height);
@@ -139,7 +139,7 @@ namespace sl
         Texture* framebufferTexture = nullptr;
         Texture* framebufferTextureSecondary = nullptr;
         //others
-        float curDrawLayer = 0;
+        float curDrawDepth = 0;
         Texture* blankTexture = nullptr;
         unsigned int vpMatUbo = 0;
         unsigned int vpMatUboBindingPoint = 0;

@@ -1,29 +1,86 @@
 #include<cassert>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 #include"ScypLib/EventDispatcher.h"
 
 namespace sl
 {
-    void EventDispatcher::SetupCallbacks(GLFWwindow* window)
+    struct InternalEventDispatcher
     {
-        glfwSetWindowUserPointer(window, this);
+    public:
+        static void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+        {
+            EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
+            dispatcher->KeyCallback(key, scancode, action, mods);
+        }
+        static void MouseMoveCallback(GLFWwindow* window, double xpos, double ypos)
+        {
+            EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
+            dispatcher->MouseMoveCallback(xpos, ypos);
+        }
+        static void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+        {
+            EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
+            dispatcher->MouseButtonCallback(button, action, mods);
+        }
+        static void MouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+        {
+            EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
+            dispatcher->MouseScrollCallback(xoffset, yoffset);
+        }
 
-        if (kbd) glfwSetKeyCallback(window, KeyCallback);
-        if (mouse)
+        static void MouseEnterCallback(GLFWwindow* window, int entered)
         {
-            glfwSetCursorPosCallback(window, MouseMoveCallback);
-            glfwSetMouseButtonCallback(window, MouseButtonCallback);
-            glfwSetScrollCallback(window, MouseScrollCallback);
-            glfwSetCursorEnterCallback(window, MouseEnterCallback);
+            EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
+            dispatcher->MouseEnterCallback(entered);
         }
-        
-        if (wnd) 
+        static void WindowCloseCallback(GLFWwindow* window)
         {
-            glfwSetWindowCloseCallback(window, WindowCloseCallback);
-            glfwSetFramebufferSizeCallback(window, SetFrameBufferSizeCallback);
-            glfwSetWindowMaximizeCallback(window, SetWindowMaximizeCallback);
-            glfwSetWindowPosCallback(window, SetWindowPosCallback);
+            EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
+            if (dispatcher->wnd) dispatcher->wnd->Close();
         }
+        static void SetFrameBufferSizeCallback(GLFWwindow* window, int width, int height)
+        {
+            EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
+            if (dispatcher->wnd) dispatcher->wnd->Resize(width, height);
+        }
+        static void SetWindowMaximizeCallback(GLFWwindow* window, int isMaximized)
+        {
+            EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
+            if (dispatcher->wnd) dispatcher->wnd->ToggleMaximize(isMaximized == GLFW_TRUE);
+        }
+        static void SetWindowPosCallback(GLFWwindow* window, int x, int y)
+        {
+            EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
+            if (dispatcher->wnd) dispatcher->wnd->SetPosition(x, y);
+        }
+        static void SetupCallbacks(GLFWwindow* window, EventDispatcher* ed)
+        {
+            glfwSetWindowUserPointer(window, ed);
+
+            if (ed->kbd) glfwSetKeyCallback(window, KeyCallback);
+            if (ed->mouse)
+            {
+                glfwSetCursorPosCallback(window, MouseMoveCallback);
+                glfwSetMouseButtonCallback(window, MouseButtonCallback);
+                glfwSetScrollCallback(window, MouseScrollCallback);
+                glfwSetCursorEnterCallback(window, MouseEnterCallback);
+            }
+
+            if (ed->wnd)
+            {
+                glfwSetWindowCloseCallback(window, WindowCloseCallback);
+                glfwSetFramebufferSizeCallback(window, SetFrameBufferSizeCallback);
+                glfwSetWindowMaximizeCallback(window, SetWindowMaximizeCallback);
+                glfwSetWindowPosCallback(window, SetWindowPosCallback);
+            }
+        }
+    };
+
+    void EventDispatcher::SetupCallbacks()
+    {
+        InternalEventDispatcher::SetupCallbacks(reinterpret_cast<GLFWwindow*>(wnd->GetWindowBackend()), this);
     }
 
     void EventDispatcher::PollEvents() const
@@ -55,114 +112,79 @@ namespace sl
     EventDispatcher::EventDispatcher(Keyboard* kbd, Mouse* mouse, Window* wnd)
         : kbd(kbd), mouse(mouse), wnd(wnd)
     {
-        SetupCallbacks(wnd->GetGLFWWindow());
+        SetupCallbacks();
     }
-
-    void EventDispatcher::KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+    void EventDispatcher::KeyCallback(int key, int scancode, int action, int mods)
     {
-        EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
-        if (dispatcher->kbd)
+        if (kbd)
         {
-            dispatcher->kbd->ProcessKeyState(key, action);
-            dispatcher->kbd->empty = false;
+            kbd->ProcessKeyState(key, action);
+            kbd->empty = false;
         }
     }
-
-    void EventDispatcher::MouseMoveCallback(GLFWwindow* window, double xpos, double ypos)
+    void EventDispatcher::MouseMoveCallback(double xpos, double ypos)
     {
-        EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
-        if (dispatcher->mouse)
+        if (mouse)
         {
-            dispatcher->mouse->OnMouseMove(static_cast<float>(xpos), static_cast<float>(ypos));
-            dispatcher->mouse->empty = false;
+            mouse->OnMouseMove(static_cast<float>(xpos), static_cast<float>(ypos));
+            mouse->empty = false;
         }
     }
-
-    void EventDispatcher::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+    void EventDispatcher::MouseButtonCallback(int button, int action, int mods)
     {
-        EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
-
-        if (dispatcher->mouse)
+        if (mouse)
         {
-            dispatcher->mouse->empty = false;
+            mouse->empty = false;
 
             if (button == GLFW_MOUSE_BUTTON_LEFT)
             {
                 if (action == GLFW_PRESS)
                 {
-                    dispatcher->mouse->OnLeftPressed();
+                    mouse->OnLeftPressed();
                 }
                 else if (action == GLFW_RELEASE)
                 {
-                    dispatcher->mouse->OnLeftReleased();
+                    mouse->OnLeftReleased();
                 }
             }
             else if (button == GLFW_MOUSE_BUTTON_RIGHT)
             {
                 if (action == GLFW_PRESS)
                 {
-                    dispatcher->mouse->OnRightPressed();
+                    mouse->OnRightPressed();
                 }
                 else if (action == GLFW_RELEASE)
                 {
-                    dispatcher->mouse->OnRightReleased();
+                    mouse->OnRightReleased();
                 }
             }
             else if (button == GLFW_MOUSE_BUTTON_MIDDLE)
             {
                 if (action == GLFW_PRESS)
                 {
-                    dispatcher->mouse->OnScrollPressed();
+                    mouse->OnScrollPressed();
                 }
                 else if (action == GLFW_RELEASE)
                 {
-                    dispatcher->mouse->OnScrollReleased();
+                    mouse->OnScrollReleased();
                 }
             }
         }
     }
-
-    void EventDispatcher::MouseScrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+    void EventDispatcher::MouseScrollCallback(double xoffset, double yoffset)
     {
-        EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
-        if (dispatcher->mouse)
+        if (mouse)
         {
-            dispatcher->mouse->OnWheelScroll(float(xoffset), float(yoffset));
-            dispatcher->mouse->empty = false;
+            mouse->OnWheelScroll(float(xoffset), float(yoffset));
+            mouse->empty = false;
         }
     }
-
-    void EventDispatcher::MouseEnterCallback(GLFWwindow* window, int entered)
+    void EventDispatcher::MouseEnterCallback(int entered)
     {
-        EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
-        if (dispatcher->mouse)
+        if (mouse)
         {
-            dispatcher->mouse->SetIsInWindow(entered != 0);
-            dispatcher->mouse->empty = false;
+            mouse->SetIsInWindow(entered != 0);
+            mouse->empty = false;
         }
-    }
-
-    void EventDispatcher::WindowCloseCallback(GLFWwindow* window)
-    {
-        EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
-        if (dispatcher->wnd) dispatcher->wnd->Close();
-    }
-
-    void EventDispatcher::SetFrameBufferSizeCallback(GLFWwindow* window, int width, int height)
-    {
-        EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
-        if (dispatcher->wnd) dispatcher->wnd->Resize(width, height);
-    }
-
-    void EventDispatcher::SetWindowMaximizeCallback(GLFWwindow* window, int isMaximized)
-    {
-        EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
-        if (dispatcher->wnd) dispatcher->wnd->ToggleMaximize(isMaximized == GLFW_TRUE);
-    }
-
-    void EventDispatcher::SetWindowPosCallback(GLFWwindow* window, int x, int y)
-    {
-        EventDispatcher* dispatcher = static_cast<EventDispatcher*>(glfwGetWindowUserPointer(window));
-        if (dispatcher->wnd) dispatcher->wnd->SetPosition(x, y);
     }
 }

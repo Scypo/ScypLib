@@ -17,7 +17,7 @@ int main()
     ed.SetWindow(&wnd);
     ed.SetKeyboard(&kbd);
     ed.SetMouse(&mouse);
-    ed.SetupCallbacks(wnd.GetGLFWWindow());
+    ed.SetupCallbacks(&wnd);
 
     // Load resources
     sl::Texture* texture = gfx.LoadTexture("knight.png");
@@ -60,7 +60,7 @@ int main()
         gfx.BeginFrame();
         gfx.BeginView(cam, zoom);
 
-        gfx.SetDrawLayer(0);
+        gfx.SetDrawDepth(0);
 
         // Draw sprite with shader effect
         gfx.DrawTexture(sprite.GetPos(), sprite.GetSize(), texture, shader);
