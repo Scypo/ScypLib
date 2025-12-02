@@ -1,6 +1,7 @@
 #include "ScypLib/Window.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <stdexcept>
 
 namespace sl
 {
@@ -12,14 +13,13 @@ namespace sl
     Window::Window(const char* title, int width, int height,
         int resizable, int decorated, int visible)
     {
-        if (!glfwInit())
-            throw std::runtime_error("Failed to initialize GLFW");
+        if (!glfwInit()) throw std::runtime_error("Failed to initialize GLFW");
 
         glfwWindowHint(GLFW_RESIZABLE, resizable);
         glfwWindowHint(GLFW_DECORATED, decorated);
         glfwWindowHint(GLFW_VISIBLE, visible);
 
-        internalWindow = new InternalWindow{};
+        internalWindow = std::make_unique<InternalWindow>();
         internalWindow->glfwWindow = glfwCreateWindow(width, height, title, nullptr, nullptr);
 
         if (!internalWindow->glfwWindow)
@@ -30,8 +30,7 @@ namespace sl
 
         glfwMakeContextCurrent(internalWindow->glfwWindow);
 
-        if (glewInit() != GLEW_OK)
-            throw std::runtime_error("Failed to initialize GLEW");
+        if (glewInit() != GLEW_OK) throw std::runtime_error("Failed to initialize GLEW");
 
         glfwGetWindowPos(internalWindow->glfwWindow, &x, &y);
 
@@ -44,10 +43,7 @@ namespace sl
     {
         if (internalWindow)
         {
-            if (internalWindow->glfwWindow)
-                glfwDestroyWindow(internalWindow->glfwWindow);
-
-            delete internalWindow;
+            if (internalWindow->glfwWindow) glfwDestroyWindow(internalWindow->glfwWindow);
             glfwTerminate();
         }
     }

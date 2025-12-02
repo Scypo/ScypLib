@@ -1,6 +1,6 @@
 #pragma once
-#include <stdexcept>
 #include <string>
+#include<memory>
 
 namespace sl
 {
@@ -30,6 +30,6 @@ namespace sl
 
         bool isRunning = false;
         struct InternalWindow;
-        InternalWindow* internalWindow = nullptr;
+        std::unique_ptr<InternalWindow> internalWindow = nullptr;
     };
 }

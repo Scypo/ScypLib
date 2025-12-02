@@ -2,6 +2,9 @@
 #include<glm/gtc/type_ptr.hpp>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include<memory>
+#include <stdexcept>
+#include<stb/stb_truetype.h>
 
 #include"ScypLib/Graphics.h"
 
@@ -169,7 +172,7 @@ namespace sl
 	void Graphics::BeginFrame()
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-		glViewport(0, 0, GetCanvasWidth(), GetCanvasHeight());
+		glViewport(0, 0, GLsizei(GetCanvasWidth()), GLsizei(GetCanvasHeight()));
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	}
@@ -180,7 +183,7 @@ namespace sl
 		float scale = window->GetHeight() / GetCanvasHeight();
 		float width = GetCanvasWidth() * scale;
 		float pillar = (float(window->GetWidth()) - width) * 0.5f;
-		glViewport(pillar, 0, width, window->GetHeight());
+		glViewport(GLint(pillar), 0, GLsizei(width), GLsizei(window->GetHeight()));
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDisable(GL_DEPTH_TEST);
@@ -442,25 +445,21 @@ namespace sl
 		assert(font->GetTextureAtlas() && "Failed to draw text. Font atlas is nullptr");
 		assert(font && "Failed to draw text. Both font and default font are nullptrs");
 
-		const std::vector<stbtt_bakedchar>& charData = font->GetCharData();
+		const std::vector<Font::Glyph>& charData = font->GetCharData();
 		Texture* atlas = font->GetTextureAtlas();
-		float baseLineHeight = font->GetLineHeight();
+		float baseLineHeight = float(font->GetLineHeight());
 
 		float scale = height / baseLineHeight;
 		for (char ch : text)
 		{
 			if (ch < font->GetFirstChar() || ch >= font->GetLastChar()) continue;
-			stbtt_aligned_quad quad;
-			Vec2f cursorPos = pos;
-			stbtt_GetBakedQuad(charData.data(), atlas->GetWidth(), atlas->GetHeight(), ch - font->GetFirstChar(), &cursorPos.x, &cursorPos.y, &quad, 1);
-			Vec2f size((quad.x1 - quad.x0) * scale, (quad.y1 - quad.y0) * scale);
-			RectF uv(quad.s0 * atlas->GetWidth(), quad.s1 * atlas->GetWidth(), quad.t1 * atlas->GetHeight(), quad.t0 * atlas->GetHeight());
-
+			const Font::Glyph& glyph = charData[ch - font->GetFirstChar()];
+			Vec2f size(glyph.rect.GetWidth() * scale, -glyph.rect.GetHeight() * scale);
 			pos.y += (baseLineHeight * scale - size.y);
-			DrawTexture(pos, size, atlas, nullptr, false, false, 0.0f, Vec2f(0, 0), &uv, c);
+			DrawTexture(pos, size, atlas, nullptr, false, false, 0.0f, Vec2f(0, 0), &glyph.rect, c);
 
 			pos.y -= (baseLineHeight * scale - size.y);
-			pos.x += size.x;
+			pos.x += glyph.xadvance * scale;
 		}
 	}
 
@@ -476,9 +475,9 @@ namespace sl
 		for (char ch : text)
 		{
 			if (ch < firstChar || ch >= lastChar) continue;
-			const auto& bc = charData[size_t(ch - firstChar)];
-			width += float(bc.x1 - bc.x0);
-			maxHeight = std::max(maxHeight, float(bc.y1 - bc.y0));
+			const Font::Glyph& glyph = charData[size_t(ch - firstChar)];
+			width += glyph.rect.GetWidth();
+			maxHeight = std::max(maxHeight, -glyph.rect.GetHeight());
 		}
 
 		if (width <= 0.0f || maxHeight <= 0.0f) return;
@@ -486,7 +485,7 @@ namespace sl
 		float scale = std::min(rect.GetWidth() / width, rect.GetHeight() / maxHeight);
 
 		Vec2f scaledSize(width * scale, maxHeight * scale);
-		Vec2f start(rect.left + (rect.GetWidth() - scaledSize.x) * 0.5f , rect.top + (rect.GetHeight() - scaledSize.y) * 0.5f);
+		Vec2f start(rect.left + (rect.GetWidth() - scaledSize.x) * 0.5f, rect.top + (rect.GetHeight() - scaledSize.y) * 0.5f);
 
 		DrawText(start, text, font, scaledSize.y, c);
 	}
@@ -811,7 +810,7 @@ namespace sl
 			assert(firstChar <= lastChar);
 			int charCount = lastChar - firstChar + 1;
 			std::vector<stbtt_bakedchar> charData(charCount);
-			charData.resize(charCount, {});
+		
 			FILE* file = nullptr;
 			errno_t err = fopen_s(&file, filepath.c_str(), "rb");
 			assert(err == 0 && file);
@@ -831,11 +830,24 @@ namespace sl
 			float scale = stbtt_ScaleForPixelHeight(&info, fontLineHeight);
 			float realLineHeight = scale * (ascent - descent + lineGap);
 
-
 			const int texWidth = 512;
 			const int texHeight = 512;
 			std::vector<unsigned char> bitmap(texWidth * texHeight, 0);
 			stbtt_BakeFontBitmap(ttfBuffer.data(), 0, fontLineHeight, bitmap.data(), texWidth, texHeight, firstChar, charCount, charData.data());
+			
+			std::vector<Font::Glyph> glyphData;
+			glyphData.resize(charCount, {});
+			for (int c = int(firstChar); c <= int(lastChar); c++)
+			{
+				int index = c - firstChar;
+				const stbtt_bakedchar& bc = charData[index];
+				
+				Font::Glyph glyph;
+				glyph.rect = RectF(bc.x0, bc.x1, bc.y1, bc.y0);
+				glyph.xadvance = bc.xadvance;
+
+				glyphData[index] = glyph;
+			}
 			std::vector<unsigned char> buffer(texWidth * texHeight * 4);
 			for (size_t i = 0; i < size_t(texWidth * texHeight); i++)
 			{
@@ -846,7 +858,7 @@ namespace sl
 				buffer[i * 4 + 3] = a;
 			}
 			Texture* atlas = CreateTextureFromMemory(texWidth, texHeight, 4, buffer.data(), TextureWrap::ClampToEdge, TextureFilter::Nearest, TextureFilter::Nearest);
-			fonts[filepath] = std::make_unique<Font>(atlas, std::move(charData), realLineHeight, ascent, firstChar, lastChar);
+			fonts[filepath] = std::make_unique<Font>(atlas, std::move(glyphData), realLineHeight, ascent, firstChar, lastChar);
 		}
 		return fonts[filepath].get();
 	}

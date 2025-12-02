@@ -3,21 +3,18 @@
 #include<memory>
 #include<string>
 
-#include<miniaudio/miniaudio.h>
-#undef PlaySound
-
 namespace sl
 {
     class Sound
     {
     public:
-        Sound(ma_engine* engine, const std::string& filepath);
-        ~Sound();
+        ~Sound() = default;
+    private:
+        struct InternalSound;
+        Sound(std::unique_ptr<InternalSound>&& sound);
     private:
         friend class Audio;
-
-        ma_sound sound;
-        ma_decoder decoder;
+        std::unique_ptr<InternalSound> sound = nullptr;
     };
 
     class Audio
@@ -31,7 +28,8 @@ namespace sl
         void StopSound(Sound* sound);
         void ClearSounds();
     private:
-        ma_engine soundEngine;
+        struct InternalSoundEngine;
+        std::unique_ptr<InternalSoundEngine> internalSoundEngine = nullptr;
         std::unordered_map<std::string, std::unique_ptr<Sound>> sounds;
     };
 }

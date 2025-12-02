@@ -2,12 +2,29 @@
 #include<cassert>
 #include <stdexcept>
 #include"ScypLib/Audio.h"
+#include<miniaudio/miniaudio.h>
+#undef PlaySound
 
 namespace sl
 {
+    struct Sound::InternalSound
+    {
+        ~InternalSound()
+        {
+            ma_sound_uninit(&sound);
+            ma_decoder_uninit(&decoder);
+        }
+        ma_sound sound;
+        ma_decoder decoder;
+    };
+    struct Audio::InternalSoundEngine
+    {
+        ma_engine soundEngine;
+    };
     Audio::Audio()
     {
-        if (ma_engine_init(NULL, &soundEngine) != MA_SUCCESS)
+        internalSoundEngine = std::make_unique<InternalSoundEngine>();
+        if (ma_engine_init(NULL, &internalSoundEngine->soundEngine) != MA_SUCCESS)
         {
             throw std::runtime_error("Failed to initialize audio engine.");
         }
@@ -16,14 +33,24 @@ namespace sl
     Audio::~Audio()
     {
         ClearSounds();
-        ma_engine_uninit(&soundEngine);
+        ma_engine_uninit(&internalSoundEngine->soundEngine);
     }
 
     Sound* Audio::LoadSound(const std::string& filepath)
     {
         if (!sounds.contains(filepath))
         {
-            sounds[filepath] = std::make_unique<Sound>(&soundEngine, filepath);
+            std::unique_ptr<Sound::InternalSound> sound = std::make_unique<Sound::InternalSound>();
+            if (ma_decoder_init_file(filepath.c_str(), nullptr, &sound->decoder) != MA_SUCCESS)
+            {
+                throw std::runtime_error(("Failed to init decoder: " + filepath).c_str());
+            }
+            if (ma_sound_init_from_data_source(&internalSoundEngine->soundEngine, &sound->decoder, 0, nullptr, &sound->sound) != MA_SUCCESS)
+            {
+                ma_decoder_uninit(&sound->decoder);
+                throw std::runtime_error(("Failed to init sound: " + filepath).c_str());
+            }
+            sounds[filepath] = std::unique_ptr<Sound>(new Sound(std::move(sound)));
         }
         return sounds[filepath].get();
     }
@@ -49,33 +76,15 @@ namespace sl
     void Audio::PlaySound(Sound* sound)
     {
         assert(sound && "Failed to play sound. Sound is nullptr");
-        ma_sound_start(&sound->sound);
+        ma_sound_start(&sound->sound->sound);
     }
 
     void Audio::StopSound(Sound* sound)
     {
         assert(sound && "Failed to stop sound. Sound is nullptr");
-        ma_sound_stop(&sound->sound);
+        ma_sound_stop(&sound->sound->sound);
     }
 
-    Sound::Sound(ma_engine* engine, const std::string& filepath)
-    {
-        if (ma_decoder_init_file(filepath.c_str(), nullptr, &decoder) != MA_SUCCESS)
-        {
-            throw std::runtime_error(("Failed to init decoder: " + filepath).c_str());
-        }
-
-        if (ma_sound_init_from_data_source(engine, &decoder, 0, nullptr, &sound) != MA_SUCCESS)
-        {
-            throw std::runtime_error(("Failed to init sound: " + filepath).c_str());
-            ma_decoder_uninit(&decoder);
-            return;
-        }
-    }
-
-    Sound::~Sound()
-    {
-        ma_sound_uninit(&sound);
-        ma_decoder_uninit(&decoder);
-    }
+    Sound::Sound(std::unique_ptr<InternalSound>&& sound)
+        : sound(std::move(sound)) {}
 }
