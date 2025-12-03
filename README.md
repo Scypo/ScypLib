@@ -21,7 +21,6 @@
 Go to your project settings and add the following paths under **C/C++ → General → Additional Include Directories**:
 
 - `<Path to ScypLib>/include`
-- `<Path to GLEW>/include`
 - `<Path to GLFW>/include`
 
 ---
@@ -30,25 +29,18 @@ Go to your project settings and add the following paths under **C/C++ → Genera
 Go to your project settings and add the following paths under **Linker → General → Additional Library Directories**:
 
 - `<Path to ScypLib>/lib/x64/Release`
-- `<Path to GLEW>/GLEW/lib/Release/x64`
 - `<Path to GLFW>/GLFW/lib-vc2022`
    
-
 ### 3. Link Libraries:
    Link against these libraries:
    - ScypLib.lib
    - glfw3.lib
-   - glew32s.lib
    - opengl32.lib
+   - 
+### 4. Set language standard to c++20.
 
-### 4. Define Preprocessor Macro:
-   Add the definition:
-   GLEW_STATIC
-
-### 5. Set language standard to c++20.
-
-### 6. Include Headers and Build:
-   Include ScypLib, GLEW and GLFW headers in your source files and build.
+### 5. Include Headers and Build:
+   Include ScypLib and GLFW headers in your source files and build.
 ---
 ## 🧰 Dependencies
 
@@ -57,7 +49,7 @@ ScypLib depends on the following open-source libraries:
 | Library       | Usage                        | License                        |
 |---------------|------------------------------|--------------------------------|
 | [GLFW](https://www.glfw.org/)       | Window creation & input         | zlib/libpng license            |
-| [GLEW](http://glew.sourceforge.net/)| OpenGL function loading         | MIT                            |
+| [glad](https://glad.dav1d.de/)| OpenGL function loading         | MIT                            |
 | [stb_image](https://github.com/nothings/stb)     | Image loading (PNG, JPG, etc)   | Public Domain / MIT            |
 | [stb_truetype](https://github.com/nothings/stb)  | Font rasterization              | Public Domain / MIT            |
 | [miniaudio](https://miniaud.io/)   | Audio playback                   | Public Domain / MIT            |
@@ -65,63 +57,6 @@ ScypLib depends on the following open-source libraries:
 
 
 ---
-## 🕹️ Example Program
-```c++
-
-#include"ScypLib/ScypLib.h"
-
-int main()
-{
-    sl::Window wnd("title", 600, 480);
-    sl::Keyboard kbd;
-    sl::Mouse mouse;
-    sl::Graphics gfx(&wnd);
-    sl::Audio audio;
-    sl::EventDispatcher ed;
-    ed.SetWindow(&wnd);
-    ed.SetKeyboard(&kbd);
-    ed.SetMouse(&mouse);
-    ed.SetupCallbacks(wnd.GetGLFWWindow());
-
-    sl::Texture* texture = gfx.LoadTexture("Assets/Images/texture.png");
-    sl::Font* fnt = gfx.LoadFont("Assets/Fonts/font.ttf", ' ', '~');
-    sl::Sound* sound = audio.LoadSound("Assets/Sounds/sound.wav");
-	gfx.SetDefaultFont(fnt);
-
-    sl::Vec2f cam = { 0,0 };
-    float zoom = 1.0f;
-
-    while (wnd.IsRunning())
-    {        
-        gfx.SetCanvasSize(Vec2f(float(wnd.GetWidth()), float(wnd.GetHeight())));
-        if (kbd.KeyIsPressed('W'))
-        {
-            audio.PlaySound(sound);
-        }
-        if (mouse.GetScrollOffsetY() < 0)
-        {
-            zoom -= 0.05f;
-            if (zoom < 0) zoom = 0.0f;
-        }
-
-        gfx.BeginFrame();
-        gfx.BeginView();
-        gfx.SetDrawLayer(0);
-
-        gfx.DrawRect(sl::RectF({ 200.0f, 200.0f }, 50.5, 50.5), sl::Colors::Blue);
-        gfx.DrawLine(20, 0, 100, 70, 1.0f, sl::Colors::Red);
-        gfx.DrawTexture(400, 300, texture);
-        gfx.EndView();
-        gfx.EndFrame();
-        ed.PollEvents();
-    }
-    gfx.UnloadTexture(texture);
-    audio.UnloadSound(sound);
-    gfx.UnloadFont(fnt);
-
-    return 0;
-}
-```
 
 ## 🧪 Shader Structure
 
