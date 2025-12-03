@@ -4,7 +4,7 @@
 #include"stb/stb_image.h"
 #define STB_TRUETYPE_IMPLEMENTATION
 #include"stb/stb_truetype.h"
-#include<GL/glew.h>
+#include<glad/glad.h>
 
 #include"ScypLib/Texture.h"
 

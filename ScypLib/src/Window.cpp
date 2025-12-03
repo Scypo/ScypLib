@@ -1,5 +1,5 @@
 #include "ScypLib/Window.h"
-#include <GL/glew.h>
+#include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <stdexcept>
 
@@ -30,7 +30,7 @@ namespace sl
 
         glfwMakeContextCurrent(internalWindow->glfwWindow);
 
-        if (glewInit() != GLEW_OK) throw std::runtime_error("Failed to initialize GLEW");
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) throw std::runtime_error("Failed to initialize GLAD");
 
         glfwGetWindowPos(internalWindow->glfwWindow, &x, &y);
 
