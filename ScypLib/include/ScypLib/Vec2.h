@@ -122,11 +122,6 @@ namespace sl
             return Vec2(-y, x);
         }
 
-        bool IsZero() const
-        {
-            return x == (T)0 && y == (T)0;
-        }
-
         template<typename U>
         explicit Vec2(const Vec2<U>& other)
             : x(static_cast<T>(other.x)), y(static_cast<T>(other.y))
@@ -149,13 +144,17 @@ namespace sl
 namespace std 
 {
     template <typename T>
-    struct hash<sl::Vec2<T>> 
+    struct std::hash<sl::Vec2<T>>
     {
-        std::size_t operator()(const sl::Vec2<T>& vec) const 
+        std::size_t operator()(const sl::Vec2<T>& v) const noexcept
         {
-            std::size_t hx = std::hash<T>()(vec.x);
-            std::size_t hy = std::hash<T>()(vec.y);
-            return hx ^ (hy << 1);
+            const std::size_t hx = std::hash<T>{}(v.x);
+            const std::size_t hy = std::hash<T>{}(v.y);
+
+            std::size_t seed = hx;
+            seed ^= hy + 0x9e3779b97f4a7c15ULL + (seed << 6) + (seed >> 2);
+
+            return seed;
         }
     };
 }
