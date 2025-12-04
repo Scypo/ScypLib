@@ -1,5 +1,3 @@
-#include<glm/glm.hpp>
-#include<glm/gtc/type_ptr.hpp>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include<memory>
@@ -151,10 +149,10 @@ namespace sl
 		return seed;
 	}
 
-	Graphics::InstanceData::InstanceData(glm::mat4 transform, Color color, float textureSlot)
+	Graphics::InstanceData::InstanceData(Mat4f transform, Color color, float textureSlot)
 		: transform(transform), color(color), textureSlot(textureSlot) {}
 
-	Graphics::Renderable::Renderable(float x, float y, float z, float width, float height, RectF uv, const Texture* texture, glm::mat4 transform, Color color)
+	Graphics::Renderable::Renderable(float x, float y, float z, float width, float height, RectF uv, const Texture* texture, Mat4f transform, Color color)
 		: x(x), y(y), z(z), width(width), height(height), uv(uv), texture(texture), data(transform, color, -1.0f) {}
 
 	Graphics::~Graphics()
@@ -211,12 +209,12 @@ namespace sl
 	{
 		cameraPos = cameraPosition;
 		cameraZoom = zoom;
-		vpMat.view = glm::mat4(1.0f);
+		vpMat.view.Identity();
 		Vec2f center = Vec2f(GetCanvasWidth() / 2.0f, GetCanvasHeight() / 2.0f);
-		vpMat.view = glm::translate(vpMat.view, glm::vec3(center.x, center.y, 0.0f));
-		vpMat.view = glm::scale(vpMat.view, glm::vec3(zoom, zoom, 1.0f));
-		vpMat.view = glm::translate(vpMat.view, glm::vec3(-center.x, -center.y, 0.0f));
-		vpMat.view = glm::translate(vpMat.view, glm::vec3(-cameraPosition.x, -cameraPosition.y, 0.0f));
+		vpMat.view.Translate(Vec3f(center.x, center.y, 0.0f));
+		vpMat.view.Scale(Vec3f(zoom, zoom, 1.0f));
+		vpMat.view.Translate(Vec3f(-center.x, -center.y, 0.0f));
+		vpMat.view.Translate(Vec3f(-cameraPosition.x, -cameraPosition.y, 0.0f));
 		BindUniformBuffer(vpMatUbo);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
 	}
@@ -224,7 +222,7 @@ namespace sl
 	void Graphics::EndView(std::vector<Shader*>& shaders)
 	{
 		Render();
-		vpMat.view = glm::mat4(1.0f);
+		vpMat.view.Identity();
 		cameraPos = { 0.0f,0.0f };
 		cameraZoom = 1.0f;
 		BindUniformBuffer(vpMatUbo);
@@ -235,7 +233,7 @@ namespace sl
 	void Graphics::EndView(Shader* shader)
 	{
 		Render();
-		vpMat.view = glm::mat4(1.0f);
+		vpMat.view.Identity();
 		cameraPos = { 0.0f,0.0f };
 		cameraZoom = 1.0f;
 		BindUniformBuffer(vpMatUbo);
@@ -309,7 +307,7 @@ namespace sl
 	{
 		assert(texture && "Failed to draw texture. Texture is nullptr");
 		auto renderable = std::make_unique<Renderable>(x, y, curDrawDepth, float(texture->GetWidth()), float(texture->GetHeight()), RectF(0.0f, 1.0f, 0.0f, 1.0f),
-			texture, glm::mat4(1.0f), Colors::White);
+			texture, Mat4f(), Colors::White);
 		if (texture->IsBinaryAlpha()) opaque[defaultShader].emplace_back(std::move(renderable));
 		else transparent[defaultShader].emplace_back(std::move(renderable));
 	}
@@ -318,16 +316,16 @@ namespace sl
 	{
 		assert(texture && "Failed to draw texture. Texture is nullptr");
 		RectF finalUV(0.0f, 1.0f, 0.0f, 1.0f);
-		glm::mat4 transform(1.0f);
+		Mat4f transform;
 		if (!shader) shader = defaultShader;
 		if (uv) finalUV = *uv / Vec2f(float(texture->GetWidth()), float(texture->GetHeight()));
 		if (flipX) std::swap(finalUV.left, finalUV.right);
 		if (flipY) std::swap(finalUV.top, finalUV.bottom);
 		if (angle != 0)
 		{
-			transform = glm::translate(transform, glm::vec3(origin.x + pos.x, origin.y + pos.y, 0.0f));
-			transform = glm::rotate(transform, glm::radians(angle), glm::vec3(0.0f, 0.0f, 1.0f));
-			transform = glm::translate(transform, glm::vec3(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
+			transform.Translate(Vec3f(origin.x + pos.x, origin.y + pos.y, 0.0f));
+			transform.Rotate(Vec3f(0.0f, 0.0f, angle));
+			transform.Translate(Vec3f(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
 		}
 		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawDepth, size.x, size.y, finalUV, texture, transform, tint);
 		if (texture->IsBinaryAlpha() && (tint.a == 1.0f || tint.a == 0.0f)) opaque[shader].emplace_back(std::move(renderable));
@@ -342,7 +340,7 @@ namespace sl
 	void Graphics::DrawSprite(const Sprite& sprite)
 	{
 		assert(sprite.GetTexture() && "Failed to draw sprite. Texture is nullptr");
-		glm::mat4 transform(1.0f);
+		Mat4f transform;
 		Vec2f pos = sprite.GetPos();
 		Vec2f size = sprite.GetSize();
 		Shader* shader = sprite.GetShader();
@@ -351,9 +349,9 @@ namespace sl
 		{
 			Vec2f origin = sprite.GetOrigin();
 
-			transform = glm::translate(transform, glm::vec3(origin.x + pos.x, origin.y + pos.y, 0.0f));
-			transform = glm::rotate(transform, glm::radians(sprite.GetRotation()), glm::vec3(0.0f, 0.0f, 1.0f));
-			transform = glm::translate(transform, glm::vec3(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
+			transform.Translate(Vec3f(origin.x + pos.x, origin.y + pos.y, 0.0f));
+			transform.Rotate(Vec3f(0.0f, 0.0f, sprite.GetRotation()));
+			transform.Translate(Vec3f(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
 		}
 		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawDepth, size.x, size.y, sprite.GetNDCUV(), sprite.GetTexture(), transform, sprite.GetColorTint());
 
@@ -364,7 +362,7 @@ namespace sl
 	void Graphics::DrawAnimatedSprite(const AnimatedSprite& animatedSprite)
 	{
 		assert(animatedSprite.GetTexture() && "Failed to draw sprite. Texture is nullptr");
-		glm::mat4 transform(1.0f);
+		Mat4f transform;
 		Vec2f pos = animatedSprite.GetPos();
 		Vec2f size = animatedSprite.GetSize();
 		RectF uv = animatedSprite.GetNDCUV();
@@ -376,10 +374,10 @@ namespace sl
 		if (animatedSprite.GetRotation() != 0)
 		{
 			Vec2f origin = animatedSprite.GetOrigin();
-
-			transform = glm::translate(transform, glm::vec3(origin.x + pos.x, origin.y + pos.y, 0.0f));
-			transform = glm::rotate(transform, glm::radians(animatedSprite.GetRotation()), glm::vec3(0.0f, 0.0f, 1.0f));
-			transform = glm::translate(transform, glm::vec3(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
+			
+			transform.Translate(Vec3f(origin.x + pos.x, origin.y + pos.y, 0.0f));
+			transform.Rotate(Vec3f(0.0f, 0.0f, animatedSprite.GetRotation()));
+			transform.Translate(Vec3f(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
 		}
 		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawDepth, size.x, size.y, animatedSprite.GetNDCUV(), animatedSprite.GetTexture(), transform, animatedSprite.GetColorTint());
 
@@ -395,8 +393,8 @@ namespace sl
 		float angle = std::atan2(dy, dx);
 		if (!shader) shader = defaultShader;
 
-		glm::mat4 transform = glm::mat4(1.0f);
-		transform = glm::rotate(transform, angle, glm::vec3(0.0f, 0.0f, 1.0f));
+		Mat4f transform;
+		transform.Rotate(Vec3f(0.0f, 0.0f, angle));
 
 		auto renderable = std::make_unique<Renderable>(x1, y1 - thickness / 2.0f, curDrawDepth, length, thickness, RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, transform, c);
 
@@ -406,7 +404,7 @@ namespace sl
 
 	void Graphics::DrawRect(const RectF& rect, const Color& c)
 	{
-		glm::mat4 transform(1.0f);
+		Mat4f transform;
 		auto renderable = std::make_unique<Renderable>(rect.left, rect.top, curDrawDepth, float(rect.GetWidth()), float(rect.GetHeight()),
 			RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, transform, c);
 		if (c.a == 0.0f || c.a == 1.0f) opaque[defaultShader].emplace_back(std::move(renderable));
@@ -425,13 +423,13 @@ namespace sl
 
 	void Graphics::DrawRect(const RectF& rect, const Color& c, float angle, Shader* shader)
 	{
-		glm::mat4 transform(1.0f);
+		Mat4f transform;
 		if (!shader) shader = defaultShader;
 
 		Vec2f center = rect.GetCenter();
-		transform = glm::translate(transform, glm::vec3(center.x, center.y, 0.0f));
-		transform = glm::rotate(transform, glm::radians(angle), glm::vec3(0.0f, 0.0f, 1.0f));
-		transform = glm::translate(transform, glm::vec3(-center.x, -center.y, 0.0f));
+		vpMat.view.Translate(Vec3f(center.x, center.y, 0.0f));
+		vpMat.view.Scale(Vec3f(0.0f, 0.0f, angle));
+		vpMat.view.Translate(Vec3f(-center.x, -center.y, 0.0f));
 
 		auto renderable = std::make_unique<Renderable>(rect.left, rect.top, curDrawDepth, float(rect.GetWidth()), float(rect.GetHeight()),
 			RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, transform, c);
@@ -497,7 +495,7 @@ namespace sl
 
 	void Graphics::PutPixel(float x, float y, const Color& c)
 	{
-		auto renderable = std::make_unique<Renderable>(x, y, curDrawDepth, 1.0f, 1.0f, RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, glm::mat4(1.0f), c);
+		auto renderable = std::make_unique<Renderable>(x, y, curDrawDepth, 1.0f, 1.0f, RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, Mat4f(), c);
 		if (c.a == 1.0f) opaque[defaultShader].emplace_back(std::move(renderable));
 		else transparent[defaultShader].emplace_back(std::move(renderable));
 	}
@@ -540,7 +538,7 @@ namespace sl
 		{
 			canvasWidth = width;
 			canvasHeight = height;
-			vpMat.projection = glm::ortho(0.0f, canvasWidth, canvasHeight, 0.0f, -50.0f, 50.0f);
+			vpMat.projection = Ortho<float,4>(0.0f, canvasWidth, canvasHeight, 0.0f, -50.0f, 50.0f);
 			BindUniformBuffer(vpMatUbo);
 			glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
 

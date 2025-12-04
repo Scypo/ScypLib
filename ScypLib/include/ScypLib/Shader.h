@@ -2,7 +2,7 @@
 #include<string>
 #include<unordered_map>
 
-#include<glm/glm.hpp>
+#include"Matrix.h"
 
 namespace sl
 {
@@ -18,7 +18,7 @@ namespace sl
 		void SetUniform1iv(const std::string& name, int count, int* data);
 		void SetUniform4f(const std::string& name, float v0, float v1, float v2, float v3);
 		void SetUniform4i(const std::string& name, int v0, int v1, int v2, int v3);
-		void SetUniformMat4f(const std::string& name, const glm::mat4& matrix);
+		void SetUniformMat4f(const std::string& name, const Mat4f& matrix);
 		unsigned int GetHandle() const { return handle; };
 	private:
 		std::string LoadShader(const std::string& filepath);

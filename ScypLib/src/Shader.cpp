@@ -169,8 +169,8 @@ namespace sl
         glUniform1iv(GetUniformLocation(name), count, data);
     }
 
-    void Shader::SetUniformMat4f(const std::string& name, const glm::mat4& matrix)
+    void Shader::SetUniformMat4f(const std::string& name, const Mat4f& matrix)
     {
-        glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, &matrix[0][0]);
+        glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, matrix.Data());
     }
 }
