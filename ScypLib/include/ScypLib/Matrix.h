@@ -4,110 +4,63 @@
 
 namespace sl
 {
-    template<typename T, size_t N>
+    inline float ToRadians(float angle)
+    {
+        constexpr float pi = 3.14159265358979323846f;
+        float radians = angle * pi / 180.0f;
+        return radians;
+    }
+    template<typename T, size_t N, size_t M>
     class Mat
     {
     public:
-        Mat()
-        {
-            Identity();
-        }
-
-        void Identity()
+        Mat(T val = T(1.0f))
         {
             for (size_t i = 0; i < N; i++)
             {
-                for (size_t j = 0; j < N; j++)
+                for (size_t j = 0; j < M; j++)
                 {
-                    mat[i][j] = (i == j) ? T(1) : T(0);
+                    mat[i][j] = (i == j) ? val : T(0);
                 }
             }
         }
 
-        void Translate(const Vec3<T>& vec)
+        void Translate(const Vec3<T>& v) requires (N == 4 && M == 4)
         {
-            static_assert(N >= 4, "Translate requires N >= 4");
-            mat[N - 1][0] += vec.x;
-            mat[N - 1][1] += vec.y;
-            mat[N - 1][2] += vec.z;
+            Mat<T, 4, 4> t(1);
+            t.mat[3][0] = v.x;
+            t.mat[3][1] = v.y;
+            t.mat[3][2] = v.z;
+
+            *this = t * *this;
         }
 
-        void Scale(const Vec3<T>& vec)
+        void Scale(const Vec3<T>& v) requires (N == 4 && M == 4)
         {
-            if constexpr (N > 0)
-            {
-                mat[0][0] *= vec.x;
-            }
-            if constexpr (N > 1)
-            {
-                mat[1][1] *= vec.y;
-            }
-            if constexpr (N > 2)
-            {
-                mat[2][2] *= vec.z;
-            }
+            mat[0][0] *= v.x;
+            mat[1][1] *= v.y;
+            mat[2][2] *= v.z;
         }
 
-        void Rotate(const Vec3<T>& vec)
+        void Rotate(const Vec3<T>& v) requires (N == 4 && M == 4)
         {
-            static_assert(N >= 3, "Rotate requires N >= 3");
+            T cx = std::cos(v.x), sx = std::sin(v.x);
+            T cy = std::cos(v.y), sy = std::sin(v.y);
+            T cz = std::cos(v.z), sz = std::sin(v.z);
 
-            if (vec.x != T(0))
-            {
-                T c = std::cos(vec.x);
-                T s = std::sin(vec.x);
-                T rot[N][N] = { T(0) };
-                for (size_t i = 0; i < N; i++)
-                {
-                    for (size_t j = 0; j < N; j++)
-                    {
-                        rot[i][j] = (i == j) ? T(1) : T(0);
-                    }
-                }
-                rot[1][1] = c;
-                rot[1][2] = -s;
-                rot[2][1] = s;
-                rot[2][2] = c;
-                Multiply(rot);
-            }
+            Mat<T, 4, 4> Rx(1);
+            Rx.mat[1][1] = cx;  Rx.mat[1][2] = -sx;
+            Rx.mat[2][1] = sx;  Rx.mat[2][2] = cx;
 
-            if (vec.y != T(0))
-            {
-                T c = std::cos(vec.y);
-                T s = std::sin(vec.y);
-                T rot[N][N] = { T(0) };
-                for (size_t i = 0; i < N; i++)
-                {
-                    for (size_t j = 0; j < N; j++)
-                    {
-                        rot[i][j] = (i == j) ? T(1) : T(0);
-                    }
-                }
-                rot[0][0] = c;
-                rot[0][2] = s;
-                rot[2][0] = -s;
-                rot[2][2] = c;
-                Multiply(rot);
-            }
+            Mat<T, 4, 4> Ry(1);
+            Ry.mat[0][0] = cy;  Ry.mat[0][2] = sy;
+            Ry.mat[2][0] = -sy; Ry.mat[2][2] = cy;
 
-            if (vec.z != T(0))
-            {
-                T c = std::cos(vec.z);
-                T s = std::sin(vec.z);
-                T rot[N][N] = { T(0) };
-                for (size_t i = 0; i < N; i++)
-                {
-                    for (size_t j = 0; j < N; j++)
-                    {
-                        rot[i][j] = (i == j) ? T(1) : T(0);
-                    }
-                }
-                rot[0][0] = c;
-                rot[0][1] = -s;
-                rot[1][0] = s;
-                rot[1][1] = c;
-                Multiply(rot);
-            }
+            Mat<T, 4, 4> Rz(1);
+            Rz.mat[0][0] = cz;  Rz.mat[0][1] = -sz;
+            Rz.mat[1][0] = sz;  Rz.mat[1][1] = cz;
+
+            *this = Rz * Ry * Rx * (*this);
         }
 
         T* Data()
@@ -119,47 +72,38 @@ namespace sl
         {
             return &mat[0][0];
         }
-
-    private:
-        void Multiply(const T other[N][N])
+        Mat<T, N, M> operator*(const Mat<T, N, M>& other) const
         {
-            T result[N][N] = { T(0) };
+            Mat<T, N, M> result(T(0));
+
             for (size_t i = 0; i < N; i++)
             {
-                for (size_t j = 0; j < N; j++)
+                for (size_t j = 0; j < M; j++)
                 {
                     for (size_t k = 0; k < N; k++)
                     {
-                        result[i][j] += mat[k][j] * other[i][k];
+                        result.mat[i][j] += mat[i][k] * other.mat[k][j];
                     }
                 }
             }
-            for (size_t i = 0; i < N; i++)
-            {
-                for (size_t j = 0; j < N; j++)
-                {
-                    mat[i][j] = result[i][j];
-                }
-            }
+
+            return result;
         }
 
     private:
-        T mat[N][N];
+        T mat[N][M];
     };
 
-    template<typename T, size_t N>
-    inline Mat<T, N> Ortho(T left, T right, T bottom, T top, T near, T far)
+    template<typename T>
+    inline Mat<T, 4, 4> Ortho(T left, T right, T bottom, T top, T near, T far)
     {
-        static_assert(N >= 4, "Ortho requires N >= 4");
-
-        Mat<T, N> result;
-        result.Identity();
+        Mat<T, 4, 4> result(1);
 
         T* m = result.Data();
-
         m[0] = T(2) / (right - left);
         m[5] = T(2) / (top - bottom);
         m[10] = -T(2) / (far - near);
+
         m[12] = -(right + left) / (right - left);
         m[13] = -(top + bottom) / (top - bottom);
         m[14] = -(far + near) / (far - near);
@@ -167,6 +111,6 @@ namespace sl
         return result;
     }
 
-    using Mat4f = Mat<float, 4>;
-    using Mat4d = Mat<double, 4>;
+    using Mat4f = Mat<float, 4, 4>;
+    using Mat4d = Mat<double, 4, 4>;
 }
