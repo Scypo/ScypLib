@@ -36,7 +36,7 @@ Go to your project settings and add the following paths under **Linker → Gener
    - ScypLib.lib
    - glfw3.lib
    - opengl32.lib
-   - 
+
 ### 4. Set language standard to c++20.
 
 ### 5. Include Headers and Build:
@@ -53,8 +53,6 @@ ScypLib depends on the following open-source libraries:
 | [stb_image](https://github.com/nothings/stb)     | Image loading (PNG, JPG, etc)   | Public Domain / MIT            |
 | [stb_truetype](https://github.com/nothings/stb)  | Font rasterization              | Public Domain / MIT            |
 | [miniaudio](https://miniaud.io/)   | Audio playback                   | Public Domain / MIT            |
-| [glm](https://github.com/g-truc/glm)| Math library (vec/mat/quats)     | MIT                            |
-
 
 ---
 
