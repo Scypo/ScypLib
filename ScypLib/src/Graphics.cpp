@@ -114,7 +114,7 @@ namespace sl
 		glBindBufferBase(GL_UNIFORM_BUFFER, vpMatUboBindingPoint, vpMatUbo);
 
 		SetCanvasSize(Vec2f(1.0f, 1.0f));//SMTHING BUGGER IF CALLED TWICE IT WORKS PROPERLY OR OUTSIDE OF CONSTRUCTOR
-		SetCanvasSize(Vec2f(float(wnd->GetWidth()), float(wnd->GetHeight())));
+		SetCanvasSize(Vec2f(window->GetSize()));
 
 		vertices.reserve(maxQuadsInBatch * 4);
 		indices.reserve(6 * maxQuadsInBatch);

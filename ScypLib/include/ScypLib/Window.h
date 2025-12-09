@@ -1,9 +1,16 @@
 #pragma once
 #include <string>
 #include<memory>
+#include"Vec2.h"
 
 namespace sl
 {
+    enum class CursorMode
+    {
+        Normal,
+        Hidden,
+        Disabled
+    };
     class Window
     {
         friend class EventDispatcher;
@@ -12,22 +19,22 @@ namespace sl
         Window(const char* title, int width, int height, int resizable = 1, int decorated = 1, int visible = 1);
         ~Window();
         void ToggleMaximize(bool isMaximized);
-        int GetWidth() const { return width; }
-        int GetHeight() const { return height; }
+        Vec2i GetSize() const;
+        Vec2i GetPos() const;
+        int GetWidth() const;
+        int GetHeight() const;
         void Close() { isRunning = false; }
         bool IsRunning() const { return isRunning; }
         void Resize(int width, int height);
         void SetPosition(int x, int y);
         void Show();
         void Hide();
+        void ToggleFullscreen();
+        void SwitchCursoreMode(CursorMode mode);
     private:
         void* GetWindowBackend()const;
     private:
-        int x = 0;
-        int y = 0;
-        int width = 0;
-        int height = 0;
-
+        bool isFullscreen = false;
         bool isRunning = false;
         struct InternalWindow;
         std::unique_ptr<InternalWindow> internalWindow = nullptr;

@@ -126,7 +126,8 @@ namespace sl
     {
         if (mouse)
         {
-            mouse->OnMouseMove(static_cast<float>(xpos), static_cast<float>(ypos));
+            glfwGetCursorPos(reinterpret_cast<GLFWwindow*>(wnd->GetWindowBackend()), &xpos, &ypos);
+            mouse->OnMouseMove(float(xpos), float(ypos));
             mouse->empty = false;
         }
     }

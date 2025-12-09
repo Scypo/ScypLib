@@ -1,1 +1,0 @@
-C:\Users\stasi\source\repos\ScypLib\ScypLib\x64\Debug\ScypLib.lib

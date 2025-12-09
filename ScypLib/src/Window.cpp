@@ -31,11 +31,6 @@ namespace sl
         glfwMakeContextCurrent(internalWindow->glfwWindow);
 
         if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) throw std::runtime_error("Failed to initialize GLAD");
-
-        glfwGetWindowPos(internalWindow->glfwWindow, &x, &y);
-
-        this->width = width;
-        this->height = height;
         isRunning = true;
     }
 
@@ -56,17 +51,37 @@ namespace sl
             glfwRestoreWindow(internalWindow->glfwWindow);
     }
 
+    Vec2i Window::GetSize() const
+    {
+        Vec2i size{};
+        glfwGetWindowSize(internalWindow->glfwWindow, &size.x, &size.y);
+        return size;
+    }
+
+    Vec2i Window::GetPos() const
+    {
+        Vec2i pos{};
+        glfwGetWindowPos(internalWindow->glfwWindow, &pos.x, &pos.y);
+        return pos;
+    }
+
+    int Window::GetWidth() const
+    {
+        return GetSize().x;
+    }
+
+    int Window::GetHeight() const
+    {
+        return GetSize().y;
+    }
+
     void Window::Resize(int width, int height)
     {
-        this->width = width;
-        this->height = height;
         glfwSetWindowSize(internalWindow->glfwWindow, width, height);
     }
 
     void Window::SetPosition(int x, int y)
     {
-        this->x = x;
-        this->y = y;
         glfwSetWindowPos(internalWindow->glfwWindow, x, y);
     }
 
@@ -78,6 +93,44 @@ namespace sl
     void Window::Hide()
     {
         glfwHideWindow(internalWindow->glfwWindow);
+    }
+    void Window::ToggleFullscreen()
+    {
+        static int x, y, w, h;
+        GLFWwindow* window = internalWindow->glfwWindow;
+        if (!isFullscreen)
+        {
+            glfwGetWindowPos(window, &x, &y);
+            glfwGetWindowSize(window, &w, &h);
+
+            GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+            const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+
+            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+        }
+        else
+        {
+            glfwSetWindowMonitor(window, nullptr, x, y, w, h, 0);
+        }
+        isFullscreen = !isFullscreen;
+    }
+    void Window::SwitchCursoreMode(CursorMode mode)
+    {
+        GLFWwindow* window = internalWindow->glfwWindow;
+        switch (mode)
+        {
+        case sl::CursorMode::Normal:
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+            break;
+        case sl::CursorMode::Hidden:
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+            break;
+        case sl::CursorMode::Disabled:
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+            break;
+        default:
+            break;
+        }
     }
     void* Window::GetWindowBackend() const
     {
