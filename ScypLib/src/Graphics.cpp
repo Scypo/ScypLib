@@ -343,6 +343,7 @@ namespace sl
 		Mat4f transform(1.0f);
 		Vec2f pos = sprite.GetPos();
 		Vec2f size = sprite.GetSize();
+		assert(size.x > 0.0f && size.y > 0.0f);
 		Shader* shader = sprite.GetShader();
 		if (!shader) shader = defaultShader;
 		if (sprite.GetRotation() != 0)
@@ -365,6 +366,7 @@ namespace sl
 		Mat4f transform(1.0f);
 		Vec2f pos = animatedSprite.GetPos();
 		Vec2f size = animatedSprite.GetSize();
+		assert(size.x > 0.0f && size.y > 0.0f);
 		RectF uv = animatedSprite.GetNDCUV();
 		Shader* shader = animatedSprite.GetShader();
 		if (!shader) shader = defaultShader;
