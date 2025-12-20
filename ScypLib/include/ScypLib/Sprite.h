@@ -153,8 +153,8 @@ namespace sl
 		}
 		void SetFrame(int n)
 		{
-			assert(n <= nFrames);
-			currentFrame = n-1;
+			assert(n < nFrames && n >= 0);
+			currentFrame = n;
 			currentTime = currentFrame * frameTime;
 		}
 		int CurrentFrame() const
@@ -208,11 +208,13 @@ namespace sl
 
 		void Update(float dt)
 		{
+			assert(curAnimation);
 			curAnimation->Update(dt);
 			SetPixelUV(curAnimation->GetCurrentUV());
 		}
 		void AdvanceFrames(int n)
 		{
+			assert(curAnimation);
 			curAnimation->AdvanceFrames(n);
 			SetPixelUV(curAnimation->GetCurrentUV());
 		}
@@ -223,16 +225,19 @@ namespace sl
 		}
 		void RemoveAnimation(const std::string& id)
 		{
+			assert(animations.contains(id));
 			if (&animations[id] == curAnimation) curAnimation = nullptr;
 			animations.erase(id);
 		}
 		void SetFrame(int n)
 		{
+			assert(curAnimation);
 			curAnimation->SetFrame(n);
 			SetPixelUV(curAnimation->GetCurrentUV());
 		}
 		void Play(const std::string& id, AnimationMode mode)
 		{
+			assert(animations.contains(id));
 			curAnimation = &animations[id];
 			curAnimation->SetAnimationMode(mode);
 			SetTexture(curAnimation->GetTexture());
@@ -241,18 +246,27 @@ namespace sl
 		}
 		void Play(const std::string& id)
 		{
+			assert(animations.contains(id));
 			curAnimation = &animations[id];
 			SetTexture(curAnimation->GetTexture());
+			
 			curAnimation->Reset();
 		}
 		void Stop()
 		{
+			assert(curAnimation);
 			curAnimation->Reset();
 			curAnimation->Pause();
 		}
 		void Pause()
 		{
+			assert(curAnimation);
 			curAnimation->Pause();
+		}
+		void Resume()
+		{
+			assert(curAnimation);
+			curAnimation->Resume();
 		}
 	private:
 		std::unordered_map<std::string, Animation> animations;
