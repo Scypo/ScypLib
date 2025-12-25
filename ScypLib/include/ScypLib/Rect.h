@@ -60,6 +60,7 @@ namespace sl
 
         T GetWidth() const { return right - left; }
         T GetHeight() const { return bottom - top; }
+        Vec2<T> GetSize() const { return Vec2<T>(GetWidth(), GetHeight()); }
 
         bool operator==(const Rect& other) const
         {

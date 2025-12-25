@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 #include <functional>
+#include"Vec2.h"
 
 namespace sl
 {
@@ -9,11 +10,13 @@ namespace sl
     {
     public:
         Vec3() = default;
-        Vec3(T x_in, T y_in, T z_in)
-            : x(x_in), y(y_in), z(z_in) {}
+        Vec3(T x, T y, T z)
+            : x(x), y(y), z(z) {}
 
         Vec3(const Vec3& other) = default;
         Vec3(Vec3&& other) noexcept = default;
+        Vec3(const Vec2<T>& vec2, T z)
+            : x(vec2.x), y(vec2.y), z(z) {}
 
         Vec3& operator=(const Vec3& rhs)
         {

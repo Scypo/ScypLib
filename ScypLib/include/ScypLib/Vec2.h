@@ -89,6 +89,14 @@ namespace sl
             return *this;
         }
 
+        Vec2 Rotate(T radians, Vec2<T> point) const
+        {
+            float cos = std::cos(radians);
+            float sin = std::sin(radians);
+            return { p.x * cos - p.y * sin,
+                     p.x * sin + p.y * cos };
+        }
+
         T GetLength() const
         {
             return (T)std::sqrt(GetLengthSq());

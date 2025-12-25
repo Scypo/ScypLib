@@ -7,6 +7,7 @@
 #include"Window.h"
 #include"LRU.h"
 #include"Sprite.h"
+#include"Mesh.h"
 #include"Shader.h"
 #include"Texture.h"
 #include"Font.h"
@@ -15,6 +16,21 @@
 
 namespace sl
 {
+    enum class DrawMode
+    {
+        Sprite2d,
+        Mesh3d,
+        Quad3d
+    };
+    struct Camera2d
+    {
+        Vec2f pos;
+        float zoom;
+    };
+    struct Camera3d
+    {
+
+    };//TODO
     class Graphics
     {
     private:
@@ -23,40 +39,42 @@ namespace sl
             alignas(16) Mat4f view;
             alignas(16) Mat4f projection;
         };
-        struct TextureVertex
+        struct QuadVertex
         {
-            float x, y, z;
-            float u, v;
-            float instanceIndex;
+            Vec3f pos;
+            Vec2f uv;
+            Color c;
 
-            TextureVertex(float x, float y, float z, float u, float v, int instanceIndex);
+            QuadVertex(Vec3f pos, Vec2f uv, Color c);
 
-            bool operator==(const TextureVertex& other) const;
+            bool operator==(const QuadVertex& other) const;
 
             struct Hasher
             {
-                size_t operator()(const TextureVertex& vertex) const;
+                size_t operator()(const QuadVertex& vertex) const;
             };
         };
-        struct InstanceData
+        struct MeshVertex
         {
-        public:
-            InstanceData(Mat4f transform, Color color, float textureSlot);
-        public:
-            alignas(16) Mat4f transform;
-            alignas(16) Color color;
-            alignas(16) float textureSlot;
-        };
-        struct Renderable
+            Vec3f pos;
+            Vec2f uv;
+        };//TODO
+        struct QuadRenderable
         {
-        public:
-            Renderable(float x, float y, float z, float width, float height, RectF uv, const Texture* texture, Mat4f transform, Color color);
-        public:
-            float x, y, z = 0;
-            float width, height;
-            const Texture* texture;
-            InstanceData data;
+            QuadRenderable(Vec3f pos, RectF uv, Vec2f size, const Texture* texture, Color color);
+            Vec3f pos {};
+            Vec2f size{};
+            const Texture* texture = nullptr;
             RectF uv;
+            Color color;
+        };
+        struct MeshRenderable
+        {
+            MeshRenderable(Vec3f pos, const Texture* texture, Mat4f transform, Color color) {};
+            Vec3f pos{};
+            const Texture* texture;
+            Mat4f transform;
+            Color color;
         };
     public:
         Graphics(Window* wnd);
@@ -67,6 +85,7 @@ namespace sl
         void EndFrame(Shader* shader = nullptr);
         void EndFrame(std::vector<Shader*>& shaders);
         void BeginView(Vec2f cameraPosition = { 0.0f, 0.0f }, float zoom = 1.0f);
+        //void BeginView(Vec3f cameraPosition = { 0.0f, 0.0f, 0.0f }, Vec3f rotation);//TODO
         void EndView(std::vector<Shader*>& shaders);
         void EndView(Shader* shader = nullptr);
         void SetDrawDepth(float depth);
@@ -80,6 +99,7 @@ namespace sl
 
         Texture* LoadTexture(const std::string& filepath, TextureWrap wrap = TextureWrap::ClampToEdge, TextureFilter minFilter = TextureFilter::Nearest, TextureFilter magFilter = TextureFilter::Nearest);
         Texture* CreateTextureFromMemory(int width, int height, int BPP, unsigned char* buffer, TextureWrap wrap, TextureFilter minFilter, TextureFilter magFilter);
+        Mesh* LoadMesh(const std::string& filepath);
         Font* LoadFont(const std::string& filepath, char firstChar, char lastChar);
         void UnloadTexture(Texture* texture);
         void UnloadFont(Font* font);
@@ -115,10 +135,10 @@ namespace sl
         void BindVertexBuffer(unsigned int vbo);
     private:
         void UpdateCanvasSize(float width, float height);
-        void ClearBatchData();
-        void Render();
-        void FlushBatch();
-        void UploadRenderable(Renderable* renderable);
+        void ClearQuadBatchData();
+        void RenderQuads();
+        void FlushQuadBatch();
+        void UploadRenderableQuad(QuadRenderable* renderable);
         int GetTextureSlot(const Texture* texture);
         const int GetTextureSlotLimit() const { return maxTextureSlots; };
         void BindTexture(const Texture* texture);
@@ -130,13 +150,13 @@ namespace sl
         float canvasWidth = -1.0f;
         float canvasHeight = -1.0f;
         //framebuffer and camera
-        Vec2f cameraPos = { 0.0f,0.0f };
-        float cameraZoom = 1.0f;
+        Camera2d cam2d = { Vec2f(0.0f,0.0f),1.0f };
         unsigned int fbo;
         unsigned int rbo;
         Texture* framebufferTexture = nullptr;
         Texture* framebufferTextureSecondary = nullptr;
         //others
+        DrawMode drawMode = DrawMode::Sprite2d;
         float curDrawDepth = 0;
         Texture* blankTexture = nullptr;
         unsigned int vpMatUbo = 0;
@@ -161,14 +181,16 @@ namespace sl
         unsigned int ibo = 0;
         unsigned int instanceSSBO = 0;
         unsigned int instanceSSBOBindingPoint = 1;
-        std::vector<unsigned int> indices;
-        std::vector<TextureVertex> vertices;
         size_t maxQuadsInBatch = 10000;
-        std::vector<InstanceData> instanceDataBuffer;
-        std::unordered_set<const Texture*> usedTextures;
         // renderables containers
-        std::unordered_map<Shader*, std::vector<std::unique_ptr<Renderable>>> opaque;
-        std::unordered_map<Shader*, std::vector<std::unique_ptr<Renderable>>> transparent;
+        //2d
+        std::vector<QuadVertex> verticesQuads;
+        std::vector<unsigned int> indicesQuads;
+        std::unordered_map<Shader*, std::vector<std::unique_ptr<QuadRenderable>>> opaqueQuads;
+        std::unordered_map<Shader*, std::vector<std::unique_ptr<QuadRenderable>>> transparentQuads;
+        //3d
+        std::unordered_map<Shader*, std::vector<std::unique_ptr<MeshRenderable>>> opaqueMeshes;
+        std::unordered_map<Shader*, std::vector<std::unique_ptr<MeshRenderable>>> transparentMeshes;
         //texture manager
         int maxTextureSlots = 0;
         LRU<const Texture*> lru;
@@ -180,5 +202,7 @@ namespace sl
         std::unordered_map<std::string, std::unique_ptr<Font>> fonts;
         //shaders
         std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
+        //meshes
+        std::unordered_map<std::string, std::unique_ptr<Mesh>> meshes;
     };
 }

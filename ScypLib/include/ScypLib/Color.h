@@ -56,6 +56,11 @@ namespace sl
             return *this;
         }
 
+        bool operator ==(const Color& other) const
+        {
+            return r == other.r && g == other.g && b == other.b && a == other.a;
+        }
+
         static Color Lerp(const Color& a, const Color& b, float t)
         {
             return

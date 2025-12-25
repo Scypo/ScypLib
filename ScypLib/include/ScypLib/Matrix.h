@@ -110,6 +110,27 @@ namespace sl
 
         return result;
     }
+    template<typename T>
+    inline Mat<T, 4, 4> LookAt(const Vec3<T>& eye, const Vec3<T>& center, const Vec3<T>& up)
+    {
+        Vec3<T> f = (center - eye).Normalize();
+        Vec3<T> s = f.Cross(up).Normalize();
+        Vec3<T> u = s.Cross(f);
+
+        Mat<T, 4, 4> result(1);
+
+        T* m = result.Data();
+        m[0] = s.x;   m[1] = u.x;   m[2] = -f.x;   m[3] = T(0);
+        m[4] = s.y;   m[5] = u.y;   m[6] = -f.y;   m[7] = T(0);
+        m[8] = s.z;   m[9] = u.z;   m[10] = -f.z;  m[11] = T(0);
+
+        m[12] = -s.Dot(eye);
+        m[13] = -u.Dot(eye);
+        m[14] = f.Dot(eye);
+        m[15] = T(1);
+
+        return result;
+    }
 
     using Mat4f = Mat<float, 4, 4>;
     using Mat4d = Mat<double, 4, 4>;

@@ -2,6 +2,9 @@
 #include <GLFW/glfw3.h>
 #include<memory>
 #include <stdexcept>
+#include<bit>
+#include <cstddef>
+#include <cstdint>
 #include<stb/stb_truetype.h>
 
 #include"ScypLib/Graphics.h"
@@ -19,61 +22,43 @@ namespace sl
 		SetVSyncInterval(1);
 		unsigned char whiteTexture[3] = { 255,255,255 };
 		blankTexture = CreateTextureFromMemory(1, 1, 3, whiteTexture, TextureWrap::ClampToEdge, TextureFilter::Nearest, TextureFilter::Nearest);
-
+		
 		const std::string vertexShader = R"(
-			#version 450 core
+			#version 330 core
 			
 			layout(location = 0) in vec3 aPosition;
 			layout(location = 1) in vec2 aTexCoord;
-			layout(location = 2) in float aInstanceIndex;
+			layout(location = 2) in vec4 aColorTint;
 			
-			struct InstanceData 
-			{
-			    mat4 transform;
-			    vec4 colorTint;
-			    float textureSlot;
-			    float padding[3];
-			};
-			
-			layout(std140, binding = 0) uniform CameraBuffer 
+			layout(std140) uniform CameraBuffer 
 			{
 			    mat4 view;
 			    mat4 projection;
 			};
 			
-			layout(std430, binding = 1) readonly buffer instanceData
-			{
-			    InstanceData instances[];
-			};
-			
-			out vec2 vTexCoord;
-			out float vTexSlot;
+			out vec2 vTexCoord;	
 			out vec4 vColorTint;
 			
 			void main()
 			{
-			    InstanceData data = instances[int(aInstanceIndex)];
-			    gl_Position = projection * view * data.transform * vec4(aPosition, 1.0);
+			    gl_Position = projection * view * vec4(aPosition, 1.0);
 			
 			    vTexCoord = aTexCoord;
-			    vTexSlot = data.textureSlot;
-			    vColorTint = data.colorTint;
+			    vColorTint = aColorTint;
 			}
 			)";
 		const std::string fragmentShader = R"(
-			#version 450 core
+			#version 330 core
 			
 			in vec2 vTexCoord;
-			in float vTexSlot;
 			in vec4 vColorTint;
 			
 			out vec4 FragColor;
-			uniform sampler2D uTextures[32];
+			uniform sampler2D uTexture;
 			
 			void main()
 			{
-			    int slot = int(vTexSlot);
-			    vec4 texColor = texture(uTextures[slot], vTexCoord);
+			    vec4 texColor = texture(uTexture, vTexCoord);
 			    vec4 finalColor = texColor * vColorTint;
 			
 			    if (finalColor.a < 0.1) discard;
@@ -90,24 +75,20 @@ namespace sl
 		BindVertexArray(vao);
 		glGenBuffers(1, &vbo);
 		BindVertexBuffer(vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(TextureVertex) * unsigned int(maxQuadsInBatch * 4), nullptr, GL_DYNAMIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(QuadVertex) * unsigned int(maxQuadsInBatch * 4), nullptr, GL_DYNAMIC_DRAW);
 		unsigned int offset = 0;
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (void*)offset);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(QuadVertex), (void*)offset);
 		glEnableVertexAttribArray(0);
 		offset += 3 * sizeof(float);
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (void*)offset);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(QuadVertex), (void*)offset);
 		glEnableVertexAttribArray(1);
 		offset += 2 * sizeof(float);
-		glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (void*)offset);
+		glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(QuadVertex), (void*)offset);
 		glEnableVertexAttribArray(2);
 		glGenBuffers(1, &ibo);
 		BindIndexBuffer(ibo);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * unsigned int(6 * maxQuadsInBatch), nullptr, GL_DYNAMIC_DRAW);
 
-		glGenBuffers(1, &instanceSSBO);
-		BindShaderStorageBuffer(instanceSSBO);
-		glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(InstanceData) * unsigned int(maxQuadsInBatch), nullptr, GL_DYNAMIC_DRAW);
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, instanceSSBOBindingPoint, instanceSSBO);
 		glGenBuffers(1, &vpMatUbo);
 		BindUniformBuffer(vpMatUbo);
 		glBufferData(GL_UNIFORM_BUFFER, sizeof(ViewProjMat), &vpMat, GL_DYNAMIC_DRAW);
@@ -116,44 +97,42 @@ namespace sl
 		SetCanvasSize(Vec2f(1.0f, 1.0f));//SMTHING BUGGER IF CALLED TWICE IT WORKS PROPERLY OR OUTSIDE OF CONSTRUCTOR
 		SetCanvasSize(Vec2f(window->GetSize()));
 
-		vertices.reserve(maxQuadsInBatch * 4);
-		indices.reserve(6 * maxQuadsInBatch);
+		verticesQuads.reserve(maxQuadsInBatch * 4);
+		indicesQuads.reserve(6 * maxQuadsInBatch);
 	}
 
-	Graphics::TextureVertex::TextureVertex(float x, float y, float z, float u, float v, int instanceIndex)
-		: x(x), y(y), z(z), u(u), v(v), instanceIndex(static_cast<float>(instanceIndex)) {}
+	Graphics::QuadVertex::QuadVertex(Vec3f pos, Vec2f uv, Color c)
+		: pos(pos), uv(uv), c(c) {}
 
-	bool Graphics::TextureVertex::operator==(const TextureVertex& other) const
+	bool Graphics::QuadVertex::operator==(const QuadVertex& other) const
 	{
-		return x == other.x && y == other.y &&
-			z == other.z &&
-			u == other.u && v == other.v &&
-			instanceIndex == other.instanceIndex;
+		return pos == other.pos && uv == other.uv && c == other.c;
 	}
 
-	size_t Graphics::TextureVertex::Hasher::operator()(const TextureVertex& vertex) const
+	size_t Graphics::QuadVertex::Hasher::operator()(const QuadVertex& vertex) const
 	{
 		size_t seed = 0;
-		auto hash_combine = [&seed](size_t h)
+
+		auto combine = [&seed](uint32_t x)
 			{
-				seed ^= h + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+				seed ^= static_cast<size_t>(x)
+					+ 0x9e3779b97f4a7c15ULL
+					+ (seed << 6)
+					+ (seed >> 2);
 			};
 
-		hash_combine(std::hash<float>{}(vertex.x));
-		hash_combine(std::hash<float>{}(vertex.y));
-		hash_combine(std::hash<float>{}(vertex.z));
-		hash_combine(std::hash<float>{}(vertex.u));
-		hash_combine(std::hash<float>{}(vertex.v));
-		hash_combine(std::hash<float>{}(vertex.instanceIndex));
+		combine(std::bit_cast<uint32_t>(vertex.pos.x));
+		combine(std::bit_cast<uint32_t>(vertex.pos.y));
+		combine(std::bit_cast<uint32_t>(vertex.pos.z));
+		combine(std::bit_cast<uint32_t>(vertex.uv.x));
+		combine(std::bit_cast<uint32_t>(vertex.uv.y));
+		combine(std::bit_cast<uint32_t>(vertex.c.r));
+		combine(std::bit_cast<uint32_t>(vertex.c.g));
+		combine(std::bit_cast<uint32_t>(vertex.c.b));
+		combine(std::bit_cast<uint32_t>(vertex.c.a));
 
 		return seed;
 	}
-
-	Graphics::InstanceData::InstanceData(Mat4f transform, Color color, float textureSlot)
-		: transform(transform), color(color), textureSlot(textureSlot) {}
-
-	Graphics::Renderable::Renderable(float x, float y, float z, float width, float height, RectF uv, const Texture* texture, Mat4f transform, Color color)
-		: x(x), y(y), z(z), width(width), height(height), uv(uv), texture(texture), data(transform, color, -1.0f) {}
 
 	Graphics::~Graphics()
 	{
@@ -187,7 +166,7 @@ namespace sl
 		glDisable(GL_DEPTH_TEST);
 		if (!shader) shader = defaultShader;
 		DrawTexture(GetCanvasRect(), framebufferTexture, shader);
-		Render();
+		RenderQuads();
 		glfwSwapBuffers(reinterpret_cast<GLFWwindow*>(window->GetWindowBackend()));
 		glEnable(GL_DEPTH_TEST);
 	}
@@ -200,15 +179,16 @@ namespace sl
 		glViewport(0, 0, window->GetWidth(), window->GetHeight());
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		DrawTexture(GetCanvasRect(), framebufferTexture, defaultShader);
-		Render();
+		RenderQuads();
 		glfwSwapBuffers(reinterpret_cast<GLFWwindow*>(window->GetWindowBackend()));
 		glEnable(GL_DEPTH_TEST);
 	}
 
 	void Graphics::BeginView(Vec2f cameraPosition, float zoom)
 	{
-		cameraPos = cameraPosition;
-		cameraZoom = zoom;
+		drawMode = DrawMode::Sprite2d;
+		cam2d.pos = cameraPosition;
+		cam2d.zoom = zoom;
 		vpMat.view = Mat4f(1.0f);
 		Vec2f center = Vec2f(GetCanvasWidth() / 2.0f, GetCanvasHeight() / 2.0f);
 		vpMat.view.Translate(Vec3f(center.x, center.y, 0.0f));
@@ -221,10 +201,18 @@ namespace sl
 
 	void Graphics::EndView(std::vector<Shader*>& shaders)
 	{
-		Render();
+		if (drawMode == DrawMode::Sprite2d)
+		{
+			RenderQuads();
+		}
+		else if (drawMode == DrawMode::Quad3d)
+		{
+			RenderQuads();
+		}
+		drawMode = DrawMode::Sprite2d;
 		vpMat.view = Mat4f(1.0f);
-		cameraPos = { 0.0f,0.0f };
-		cameraZoom = 1.0f;
+		cam2d.pos = { 0.0f,0.0f };
+		cam2d.zoom = 1.0f;
 		BindUniformBuffer(vpMatUbo);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
 		ApplyPostProcessing(shaders);
@@ -232,10 +220,18 @@ namespace sl
 
 	void Graphics::EndView(Shader* shader)
 	{
-		Render();
+		if (drawMode == DrawMode::Sprite2d)
+		{
+			RenderQuads();
+		}
+		else if (drawMode == DrawMode::Quad3d)
+		{
+			RenderQuads();
+		}
+		drawMode = DrawMode::Sprite2d;
 		vpMat.view = Mat4f(1.0f);
-		cameraPos = { 0.0f,0.0f };
-		cameraZoom = 1.0f;
+		cam2d.pos = { 0.0f,0.0f };
+		cam2d.zoom = 1.0f;
 		BindUniformBuffer(vpMatUbo);
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
 		glDisable(GL_DEPTH_TEST);
@@ -244,7 +240,7 @@ namespace sl
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		DrawTexture(GetCanvasRect(), framebufferTexture, shader);
-		Render();
+		RenderQuads();
 		std::swap(framebufferTexture, framebufferTextureSecondary);
 		glEnable(GL_DEPTH_TEST);
 	}
@@ -285,7 +281,7 @@ namespace sl
 			glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 			DrawTexture(GetCanvasRect(), otherTarget, shader);
-			Render();
+			RenderQuads();
 			std::swap(currentTarget, otherTarget);
 		}
 		if (otherTarget != framebufferTexture) std::swap(framebufferTexture, framebufferTextureSecondary);
@@ -305,31 +301,31 @@ namespace sl
 
 	void Graphics::DrawTexture(float x, float y, const Texture* texture)
 	{
+		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
 		assert(texture && "Failed to draw texture. Texture is nullptr");
-		auto renderable = std::make_unique<Renderable>(x, y, curDrawDepth, float(texture->GetWidth()), float(texture->GetHeight()), RectF(0.0f, 1.0f, 0.0f, 1.0f),
-			texture, Mat4f(1.0f), Colors::White);
-		if (texture->IsBinaryAlpha()) opaque[defaultShader].emplace_back(std::move(renderable));
-		else transparent[defaultShader].emplace_back(std::move(renderable));
+		auto renderable = std::make_unique<QuadRenderable>(Vec3f(x, y, curDrawDepth), RectF(0.0f, 1.0f, 0.0f, 1.0f), Vec2f(float(texture->GetWidth()), float(texture->GetHeight())),
+			texture, Colors::White);
+		if (texture->IsBinaryAlpha()) opaqueQuads[defaultShader].emplace_back(std::move(renderable));
+		else transparentQuads[defaultShader].emplace_back(std::move(renderable));
 	}
 
 	void Graphics::DrawTexture(Vec2f pos, Vec2f size, const Texture* texture, Shader* shader, bool flipX, bool flipY, float angle, Vec2f origin, const RectF* uv, const Color& tint)
 	{
+		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
 		assert(texture && "Failed to draw texture. Texture is nullptr");
 		RectF finalUV(0.0f, 1.0f, 0.0f, 1.0f);
-		Mat4f transform(1.0f);
+		
 		if (!shader) shader = defaultShader;
 		if (uv) finalUV = *uv / Vec2f(float(texture->GetWidth()), float(texture->GetHeight()));
 		if (flipX) std::swap(finalUV.left, finalUV.right);
 		if (flipY) std::swap(finalUV.top, finalUV.bottom);
 		if (angle != 0)
 		{
-			transform.Translate(Vec3f(origin.x + pos.x, origin.y + pos.y, 0.0f));
-			transform.Rotate(Vec3f(0.0f, 0.0f, ToRadians(angle)));
-			transform.Translate(Vec3f(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
+			pos = pos.Rotate(ToRadians(angle), origin);
 		}
-		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawDepth, size.x, size.y, finalUV, texture, transform, tint);
-		if (texture->IsBinaryAlpha() && (tint.a == 1.0f || tint.a == 0.0f)) opaque[shader].emplace_back(std::move(renderable));
-		else transparent[shader].emplace_back(std::move(renderable));
+		auto renderable = std::make_unique<QuadRenderable>(Vec3f(pos, curDrawDepth), finalUV, size, texture, tint);
+		if (texture->IsBinaryAlpha() && (tint.a == 1.0f || tint.a == 0.0f)) opaqueQuads[shader].emplace_back(std::move(renderable));
+		else transparentQuads[shader].emplace_back(std::move(renderable));
 	}
 
 	void Graphics::DrawTexture(const RectF& targetRect, const Texture* texture, Shader* shader, bool flipX, bool flipY, float angle, Vec2f origin, const RectF* uv, const Color& tint)
@@ -339,8 +335,9 @@ namespace sl
 
 	void Graphics::DrawSprite(const Sprite& sprite)
 	{
+		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
 		assert(sprite.GetTexture() && "Failed to draw sprite. Texture is nullptr");
-		Mat4f transform(1.0f);
+		
 		Vec2f pos = sprite.GetPos();
 		Vec2f size = sprite.GetSize();
 		assert(size.x > 0.0f && size.y > 0.0f);
@@ -350,20 +347,19 @@ namespace sl
 		{
 			Vec2f origin = sprite.GetOrigin();
 
-			transform.Translate(Vec3f(origin.x + pos.x, origin.y + pos.y, 0.0f));
-			transform.Rotate(Vec3f(0.0f, 0.0f, ToRadians(sprite.GetRotation())));
-			transform.Translate(Vec3f(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
+			pos = pos.Rotate(ToRadians(sprite.GetRotation()), origin);
 		}
-		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawDepth, size.x, size.y, sprite.GetNDCUV(), sprite.GetTexture(), transform, sprite.GetColorTint());
+		auto renderable = std::make_unique<QuadRenderable>(Vec3f(pos, curDrawDepth), sprite.GetNDCUV(), size, sprite.GetTexture(), sprite.GetColorTint());
 
-		if (sprite.GetTexture()->IsBinaryAlpha() && (sprite.GetColorTint().a == 1.0f || sprite.GetColorTint().a == 0.0f)) opaque[shader].emplace_back(std::move(renderable));
-		else transparent[shader].emplace_back(std::move(renderable));
+		if (sprite.GetTexture()->IsBinaryAlpha() && (sprite.GetColorTint().a == 1.0f || sprite.GetColorTint().a == 0.0f)) opaqueQuads[shader].emplace_back(std::move(renderable));
+		else transparentQuads[shader].emplace_back(std::move(renderable));
 	}
 
 	void Graphics::DrawAnimatedSprite(const AnimatedSprite& animatedSprite)
 	{
+		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
 		assert(animatedSprite.GetTexture() && "Failed to draw sprite. Texture is nullptr");
-		Mat4f transform(1.0f);
+		
 		Vec2f pos = animatedSprite.GetPos();
 		Vec2f size = animatedSprite.GetSize();
 		assert(size.x > 0.0f && size.y > 0.0f);
@@ -377,40 +373,42 @@ namespace sl
 		{
 			Vec2f origin = animatedSprite.GetOrigin();
 			
-			transform.Translate(Vec3f(origin.x + pos.x, origin.y + pos.y, 0.0f));
-			transform.Rotate(Vec3f(0.0f, 0.0f, ToRadians(animatedSprite.GetRotation())));
-			transform.Translate(Vec3f(-origin.x - pos.x, -origin.y - pos.y, 0.0f));
+			pos = pos.Rotate(ToRadians(animatedSprite.GetRotation()), origin);
 		}
-		auto renderable = std::make_unique<Renderable>(pos.x, pos.y, curDrawDepth, size.x, size.y, animatedSprite.GetNDCUV(), animatedSprite.GetTexture(), transform, animatedSprite.GetColorTint());
+		auto renderable = std::make_unique<QuadRenderable>(Vec3f(pos, curDrawDepth), animatedSprite.GetNDCUV(), size, animatedSprite.GetTexture(), animatedSprite.GetColorTint());
 
-		if (animatedSprite.GetTexture()->IsBinaryAlpha() && (animatedSprite.GetColorTint().a == 1.0f || animatedSprite.GetColorTint().a == 0.0f)) opaque[shader].emplace_back(std::move(renderable));
-		else transparent[shader].emplace_back(std::move(renderable));
+		if (animatedSprite.GetTexture()->IsBinaryAlpha() && (animatedSprite.GetColorTint().a == 1.0f || animatedSprite.GetColorTint().a == 0.0f)) opaqueQuads[shader].emplace_back(std::move(renderable));
+		else transparentQuads[shader].emplace_back(std::move(renderable));
 	}
 
 	void Graphics::DrawLine(float x1, float y1, float x2, float y2, float thickness, const Color& c, Shader* shader)
 	{
+		sdaf
+		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
+		Vec2f pos1 = { x1,y1 };
+		Vec2f pos2 = { x1,y1 };
 		float dx = x2 - x1;
 		float dy = y2 - y1;
 		float length = std::sqrt(dx * dx + dy * dy);
 		float angle = std::atan2(dy, dx);
 		if (!shader) shader = defaultShader;
+		float cx = (x1 + x2) / 2.0f;
+		float cy = (y1 + y2) / 2.0f;
 
-		Mat4f transform(1.0f);
-		transform.Rotate(Vec3f(0.0f, 0.0f, ToRadians(angle)));
+		Vec2f pos = pos.Rotate(ToRadians(angle), origin);
 
-		auto renderable = std::make_unique<Renderable>(x1, y1 - thickness / 2.0f, curDrawDepth, length, thickness, RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, transform, c);
+		auto renderable = std::make_unique<QuadRenderable>(Vec3f(x1, y1 - thickness / 2.0f, curDrawDepth), RectF(0.0f, 1.0f, 0.0f, 1.0f), Vec2f(length, thickness), blankTexture, c);
 
-		if (c.a == 0.0f || c.a == 1.0f) opaque[shader].emplace_back(std::move(renderable));
-		else transparent[shader].emplace_back(std::move(renderable));
+		if (c.a == 0.0f || c.a == 1.0f) opaqueQuads[shader].emplace_back(std::move(renderable));
+		else transparentQuads[shader].emplace_back(std::move(renderable));
 	}
 
 	void Graphics::DrawRect(const RectF& rect, const Color& c)
 	{
-		Mat4f transform(1.0f);
-		auto renderable = std::make_unique<Renderable>(rect.left, rect.top, curDrawDepth, float(rect.GetWidth()), float(rect.GetHeight()),
-			RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, transform, c);
-		if (c.a == 0.0f || c.a == 1.0f) opaque[defaultShader].emplace_back(std::move(renderable));
-		else transparent[defaultShader].emplace_back(std::move(renderable));
+		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
+		auto renderable = std::make_unique<QuadRenderable>(Vec3f(rect.left, rect.top, curDrawDepth), RectF(0.0f, 1.0f, 0.0f, 1.0f), rect.GetSize(), blankTexture, c);
+		if (c.a == 0.0f || c.a == 1.0f) opaqueQuads[defaultShader].emplace_back(std::move(renderable));
+		else transparentQuads[defaultShader].emplace_back(std::move(renderable));
 	}
 
 	void Graphics::DrawRect(Vec2f pos, Vec2f size, const Color& c)
@@ -425,22 +423,22 @@ namespace sl
 
 	void Graphics::DrawRect(const RectF& rect, const Color& c, float angle, Shader* shader)
 	{
-		Mat4f transform(1.0f);
+		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
+
 		if (!shader) shader = defaultShader;
 
 		Vec2f center = rect.GetCenter();
-		transform.Translate(Vec3f(center.x, center.y, 0.0f));
-		transform.Rotate(Vec3f(0.0f, 0.0f, ToRadians(angle)));
-		transform.Translate(Vec3f(-center.x, -center.y, 0.0f));
+		Vec2f pos = Vec2f(rect.left, rect.top);
+		pos = pos.Rotate(ToRadians(angle), center);
 
-		auto renderable = std::make_unique<Renderable>(rect.left, rect.top, curDrawDepth, float(rect.GetWidth()), float(rect.GetHeight()),
-			RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, transform, c);
-		if (c.a == 0.0f || c.a == 1.0f) opaque[shader].emplace_back(std::move(renderable));
-		else transparent[shader].emplace_back(std::move(renderable));
+		auto renderable = std::make_unique<QuadRenderable>(Vec3f(pos, curDrawDepth), RectF(0.0f, 1.0f, 0.0f, 1.0f), rect.GetSize(), blankTexture, c);
+		if (c.a == 0.0f || c.a == 1.0f) opaqueQuads[shader].emplace_back(std::move(renderable));
+		else transparentQuads[shader].emplace_back(std::move(renderable));
 	}
 
 	void Graphics::DrawText(sl::Vec2f pos, const std::string& text, Font* font, float height, const Color& c)
 	{
+		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
 		if (!font) font = defaultFont;
 		assert(font->GetTextureAtlas() && "Failed to draw text. Font atlas is nullptr");
 		assert(font && "Failed to draw text. Both font and default font are nullptrs");
@@ -465,6 +463,7 @@ namespace sl
 
 	void Graphics::DrawText(const RectF& rect, const std::string& text, Font* font, const Color& c)
 	{
+		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
 		const auto& charData = font->GetCharData();
 		char firstChar = font->GetFirstChar();
 		char lastChar = font->GetLastChar();
@@ -497,9 +496,10 @@ namespace sl
 
 	void Graphics::PutPixel(float x, float y, const Color& c)
 	{
-		auto renderable = std::make_unique<Renderable>(x, y, curDrawDepth, 1.0f, 1.0f, RectF(0.0f, 1.0f, 0.0f, 1.0f), blankTexture, Mat4f(1.0f), c);
-		if (c.a == 1.0f) opaque[defaultShader].emplace_back(std::move(renderable));
-		else transparent[defaultShader].emplace_back(std::move(renderable));
+		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
+		auto renderable = std::make_unique<QuadRenderable>(Vec3f(x, y, curDrawDepth), RectF(0.0f, 1.0f, 0.0f, 1.0f), Vec2f(1.0f,1.0f), blankTexture, c);
+		if (c.a == 1.0f) opaqueQuads[defaultShader].emplace_back(std::move(renderable));
+		else transparentQuads[defaultShader].emplace_back(std::move(renderable));
 	}
 
 	Color Graphics::GetPixel(int x, int y)
@@ -633,48 +633,59 @@ namespace sl
 		}
 	}
 
-	void Graphics::ClearBatchData()
+	void Graphics::ClearQuadBatchData()
 	{
-		vertices.clear();
-		indices.clear();
-		opaque.clear();
-		transparent.clear();
-		usedTextures.clear();
-		instanceDataBuffer.clear();
+		verticesQuads.clear();
+		indicesQuads.clear();
+		opaqueQuads.clear();
+		transparentQuads.clear();
 	}
 
-	void Graphics::Render()
+	void Graphics::RenderQuads()
 	{
-		Vec2f visibleSize(GetCanvasWidth() / cameraZoom, GetCanvasHeight() / cameraZoom);
-		Vec2f cameraCenter = cameraPos + Vec2f(GetCanvasWidth() / 2, GetCanvasHeight() / 2);
+		Vec2f visibleSize(GetCanvasWidth() / cam2d.zoom, GetCanvasHeight() / cam2d.zoom);
+		Vec2f cameraCenter = cam2d.pos + Vec2f(GetCanvasWidth() / 2, GetCanvasHeight() / 2);
 		RectF visibleArea(cameraCenter - visibleSize / 2, visibleSize.x, visibleSize.y);
 
-		if (!opaque.empty())
+		const Texture* prevTexture = nullptr;
+
+		if (!opaqueQuads.empty())
 		{
-			for (auto& [shader, renderables] : opaque)
+			for (auto& [shader, renderables] : opaqueQuads)
 			{
+				std::sort(renderables.begin(), renderables.end(), [](const auto& a, const auto& b)
+					{
+						return a.get()->texture < b->texture;
+					});
 				currentShader = shader;
 				for (auto& renderable : renderables)
 				{
-					RectF rect(renderable.get()->x, renderable.get()->x + renderable.get()->width,
-						renderable.get()->y, renderable.get()->y + renderable.get()->height);
+					if (prevTexture != renderable.get()->texture)
+					{
+						FlushQuadBatch();
+						prevTexture = renderable.get()->texture;
+						BindTexture(prevTexture);
+						shader->SetUniform1i("uTexture", GetTextureSlot(prevTexture));
+					}
+					RectF rect(renderable.get()->pos.x, renderable.get()->pos.x + renderable.get()->size.x,
+						renderable.get()->pos.y, renderable.get()->pos.y + renderable.get()->size.y);
 
-					if(visibleArea.IsOverlappingWith(rect)) UploadRenderable(renderable.get());
+					if(visibleArea.IsOverlappingWith(rect)) UploadRenderableQuad(renderable.get());
 				}
-				FlushBatch();
+				FlushQuadBatch();
 			}
 		}
 
-		if (!transparent.empty())
+		if (!transparentQuads.empty())
 		{
-			std::vector<std::pair<Shader*, Renderable*>> sortedTransparent;
-			for (auto& [shader, renderables] : transparent)
+			std::vector<std::pair<Shader*, QuadRenderable*>> sortedTransparent;
+			for (auto& [shader, renderables] : transparentQuads)
 			{
 				assert(shader);
 				for (auto& renderable : renderables)
 				{
-					RectF rect(renderable.get()->x, renderable.get()->x + renderable.get()->width,
-						renderable.get()->y, renderable.get()->y + renderable.get()->height);
+					RectF rect(renderable.get()->pos.x, renderable.get()->pos.x + renderable.get()->size.x,
+						renderable.get()->pos.y, renderable.get()->pos.y + renderable.get()->size.y);
 
 					if (visibleArea.IsOverlappingWith(rect)) sortedTransparent.emplace_back(shader, renderable.get());
 				}
@@ -683,7 +694,8 @@ namespace sl
 			std::sort(sortedTransparent.begin(), sortedTransparent.end(),
 				[&](const auto& a, const auto& b)
 				{
-					return a.second->z < b.second->z;
+					if(a.second == b.second) return a.second->texture < b.second->texture;
+					return a.second->pos.z < b.second->pos.z;
 				});
 
 			glEnable(GL_BLEND);
@@ -694,21 +706,29 @@ namespace sl
 			{
 				if (shader != currentShader)
 				{
-					FlushBatch();
+					FlushQuadBatch();
 					currentShader = shader;
+					shader->SetUniform1i("uTexture", GetTextureSlot(prevTexture));
 				}
-				UploadRenderable(renderable);
+				if (prevTexture != renderable->texture)
+				{
+					FlushQuadBatch();
+					prevTexture = renderable->texture;
+					BindTexture(prevTexture);
+					shader->SetUniform1i("uTexture", GetTextureSlot(prevTexture));
+				}
+				UploadRenderableQuad(renderable);
 			}
-			FlushBatch();
+			FlushQuadBatch();
 
 			glDepthMask(GL_TRUE);
 			glDisable(GL_BLEND);
 		}
 
-		ClearBatchData();
+		ClearQuadBatchData();
 	}
 
-	void Graphics::FlushBatch()
+	void Graphics::FlushQuadBatch()
 	{
 		BindShaderStorageBuffer(instanceSSBO);
 		BindVertexArray(vao);
@@ -716,69 +736,48 @@ namespace sl
 		BindIndexBuffer(ibo);
 		BindShader(currentShader->GetHandle());
 
-		glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(InstanceData) * int(instanceDataBuffer.size()), instanceDataBuffer.data());
-		glBufferSubData(GL_ARRAY_BUFFER, 0, int(vertices.size() * sizeof(TextureVertex)), vertices.data());
-		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(unsigned int) * int(indices.size()), indices.data());
+		glBufferSubData(GL_ARRAY_BUFFER, 0, int(verticesQuads.size() * sizeof(QuadVertex)), verticesQuads.data());
+		glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, sizeof(unsigned int) * int(indicesQuads.size()), indicesQuads.data());
 
-		glDrawElements(GL_TRIANGLES, int(indices.size()), GL_UNSIGNED_INT, nullptr);
-		vertices.clear();
-		indices.clear();
-		usedTextures.clear();
-		instanceDataBuffer.clear();
+		glDrawElements(GL_TRIANGLES, int(indicesQuads.size()), GL_UNSIGNED_INT, nullptr);
+		verticesQuads.clear();
+		indicesQuads.clear();
 	}
 
-	void Graphics::UploadRenderable(Renderable* renderable)
+	void Graphics::UploadRenderableQuad(QuadRenderable* renderable)
 	{
-		if (vertices.size() == maxQuadsInBatch * 4)
+		if (verticesQuads.size() == maxQuadsInBatch * 4)
 		{
-			FlushBatch();
+			FlushQuadBatch();
 		}
 
 		const Texture* texture = renderable->texture;
 
-		int slot = GetTextureSlot(texture);
-		if (usedTextures.size() == maxTextureSlots && slot == -1)
-		{
-			FlushBatch();
+		float width = renderable->size.x;
+		float height = renderable->size.y;
 
-			BindTexture(texture);
-			slot = GetTextureSlot(texture);
-		}
-		else if (slot == -1)
-		{
-			BindTexture(texture);
-			slot = GetTextureSlot(texture);
-		}
-		assert(slot != -1);
-		float width = renderable->width;
-		float height = renderable->height;
-		int instanceIdx = int(instanceDataBuffer.size());
-
-		unsigned int vertStart = unsigned int(vertices.size());
+		unsigned int vertStart = unsigned int(verticesQuads.size());
 
 		RectF uv = renderable->uv;
+		Color c = renderable->color;
 
-		float x = renderable->x;
-		float y = renderable->y;
-		float z = renderable->z;
-		vertices.emplace_back(TextureVertex(x, y, z, uv.left, uv.bottom, instanceIdx)); // bottom-left
-		vertices.emplace_back(TextureVertex(x + width, y, z, uv.right, uv.bottom, instanceIdx)); // bottom-right
-		vertices.emplace_back(TextureVertex(x + width, y + height, z, uv.right, uv.top, instanceIdx)); // top-right
-		vertices.emplace_back(TextureVertex(x, y + height, z, uv.left, uv.top, instanceIdx)); // top-left
+		float x = renderable->pos.x;
+		float y = renderable->pos.y;
+		float z = renderable->pos.z;
+		verticesQuads.emplace_back(QuadVertex({ x, y, z }, { uv.left, uv.bottom }, c)); // bottom-left
+		verticesQuads.emplace_back(QuadVertex({ x + width, y, z }, { uv.right, uv.bottom }, c)); // bottom-right
+		verticesQuads.emplace_back(QuadVertex({ x + width, y + height, z }, { uv.right, uv.top }, c)); // top-right
+		verticesQuads.emplace_back(QuadVertex({ x, y + height, z }, { uv.left, uv.top }, c)); // top-left
 
-		indices.emplace_back(vertStart);
-		indices.emplace_back(vertStart + 1);
-		indices.emplace_back(vertStart + 2);
+		indicesQuads.emplace_back(vertStart);
+		indicesQuads.emplace_back(vertStart + 1);
+		indicesQuads.emplace_back(vertStart + 2);
 
-		indices.emplace_back(vertStart);
-		indices.emplace_back(vertStart + 2);
-		indices.emplace_back(vertStart + 3);
+		indicesQuads.emplace_back(vertStart);
+		indicesQuads.emplace_back(vertStart + 2);
+		indicesQuads.emplace_back(vertStart + 3);
 
 		UseTexture(texture);
-		renderable->data.textureSlot = float(slot);
-
-		instanceDataBuffer.push_back(renderable->data);
-		if (!usedTextures.contains(texture)) usedTextures.insert(texture);
 	}
 
 	Texture* Graphics::LoadTexture(const std::string& filepath, TextureWrap wrap, TextureFilter minFilter, TextureFilter magFilter)
@@ -887,6 +886,48 @@ namespace sl
 		}
 	}
 
+	Mesh* Graphics::LoadMesh(const std::string& filepath)
+	{
+		if (!meshes.contains(filepath)) 
+		{
+			unsigned int meshvao;
+			unsigned int meshvbo;
+			unsigned int meshibo;
+
+			std::vector<MeshVertex> verts
+			{
+				{Vec3f(-0.5f,  0.5f, 0.0f), Vec2f(0.0f, 1.0f)}, // top-left
+				{Vec3f(0.5f,  0.5f, 0.0f), Vec2f(1.0f, 1.0f)}, // top-right
+				{Vec3f(0.5f, -0.5f, 0.0f), Vec2f(1.0f, 0.0f)}, // bottom-right
+				{Vec3f(-0.5f, -0.5f, 0.0f), Vec2f(0.0f, 0.0f)}  // bottom-left
+			};
+
+			std::vector<unsigned int> indices
+			{
+				0, 1, 2,
+				2, 3, 0
+			};
+
+			glGenVertexArrays(1, &meshvao);
+			BindVertexArray(meshvao);
+			
+			glGenBuffers(1, &meshvbo);
+			BindVertexBuffer(meshvbo);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(MeshVertex) * verts.size(), verts.data(), GL_STATIC_DRAW);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(MeshVertex), (void*)offsetof(MeshVertex, pos));//pos
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(MeshVertex), (void*)offsetof(MeshVertex, uv)); //uv
+			glEnableVertexAttribArray(1);
+			
+			glGenBuffers(1, &meshibo);
+			BindIndexBuffer(meshibo);
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), indices.data(), GL_STATIC_DRAW);
+
+			meshes[filepath] = std::make_unique<Mesh>(meshvao, meshvbo, meshibo);
+		}
+		return meshes[filepath].get();
+	}
+
 	void Graphics::UnloadFont(Font* font)
 	{
 		assert(font && "Failed to unload font. Font is nullptr");
@@ -907,13 +948,13 @@ namespace sl
 		if (!shaders.contains(name))
 		{
 			std::unique_ptr<Shader> shader = std::make_unique<Shader>(vertex, fragment, isPath);
-			int slots[32]{};
-			for (int i = 0; i < 32; i++) slots[i] = i;
 			BindShader(shader->GetHandle());
-			shader->SetUniform1iv("uTextures", 32, slots);
+			GLuint blockIndex = glGetUniformBlockIndex(shader.get()->GetHandle(), "CameraBuffer");
+			if(blockIndex != GL_INVALID_INDEX) glUniformBlockBinding(shader.get()->GetHandle(), blockIndex, 0);
 			
 			Shader* rawPtr = shader.get();
 			shaders[name] = std::move(shader);
+
 		}
 		return shaders[name].get();
 	}
@@ -939,25 +980,28 @@ namespace sl
 	void Graphics::BindTexture(const Texture* texture)
 	{
 		assert(texture && "Failed to bind texture. Texture is nullptr");
-		if (availableSlots.empty())
+		if(textureToSlot[texture] == -1)
 		{
-			const Texture* oldTexture = lru.GetLRU();
-			assert(oldTexture);
-			lru.PopLRU();
-			int slot = GetTextureSlot(oldTexture);
-			assert(slot != -1);
-			textureToSlot[oldTexture] = -1;
-			glBindTextureUnit(slot, texture->GetHandle());
-			slotToTexture[slot] = texture;
-			textureToSlot[texture] = slot;
-		}
-		else
-		{
-			int slot = *availableSlots.begin();
-			glBindTextureUnit(slot, texture->GetHandle());
-			textureToSlot[texture] = slot;
-			slotToTexture[slot] = texture;
-			availableSlots.erase(slot);
+			if (availableSlots.empty())
+			{
+				const Texture* oldTexture = lru.GetLRU();
+				assert(oldTexture);
+				lru.PopLRU();
+				int slot = GetTextureSlot(oldTexture);
+				assert(slot != -1);
+				textureToSlot[oldTexture] = -1;
+				glBindTextureUnit(slot, texture->GetHandle());
+				slotToTexture[slot] = texture;
+				textureToSlot[texture] = slot;
+			}
+			else
+			{
+				int slot = *availableSlots.begin();
+				glBindTextureUnit(slot, texture->GetHandle());
+				textureToSlot[texture] = slot;
+				slotToTexture[slot] = texture;
+				availableSlots.erase(slot);
+			}
 		}
 		lru.Push(texture);
 	}
@@ -975,4 +1019,6 @@ namespace sl
 		availableSlots.clear();
 		for (int i = 0; i < maxTextureSlots; i++) availableSlots.insert(i);
 	}
+	Graphics::QuadRenderable::QuadRenderable(Vec3f pos, RectF uv, Vec2f size, const Texture* texture, Color color)
+		: pos(pos), uv(uv), size(size), texture(texture), color(color) {}
 }
