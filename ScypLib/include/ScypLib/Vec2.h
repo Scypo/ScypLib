@@ -93,8 +93,8 @@ namespace sl
         {
             float cos = std::cos(radians);
             float sin = std::sin(radians);
-            return { p.x * cos - p.y * sin,
-                     p.x * sin + p.y * cos };
+            return { point.x * cos - point.y * sin,
+                     point.x * sin + point.y * cos };
         }
 
         T GetLength() const

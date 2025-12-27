@@ -39,20 +39,19 @@ namespace sl
             alignas(16) Mat4f view;
             alignas(16) Mat4f projection;
         };
+        struct QuadInstanceData
+        {
+            RectF uv;
+            Color color;
+            Mat4f model;
+        };
         struct QuadVertex
         {
             Vec3f pos;
-            Vec2f uv;
-            Color c;
 
-            QuadVertex(Vec3f pos, Vec2f uv, Color c);
+            QuadVertex(Vec3f pos);
 
             bool operator==(const QuadVertex& other) const;
-
-            struct Hasher
-            {
-                size_t operator()(const QuadVertex& vertex) const;
-            };
         };
         struct MeshVertex
         {
@@ -61,12 +60,12 @@ namespace sl
         };//TODO
         struct QuadRenderable
         {
-            QuadRenderable(Vec3f pos, RectF uv, Vec2f size, const Texture* texture, Color color);
-            Vec3f pos {};
-            Vec2f size{};
+            QuadRenderable(Mat4f model, const Texture* texture, RectF uv, Color color, float z);
+            Mat4f model;
             const Texture* texture = nullptr;
             RectF uv;
             Color color;
+            float z;
         };
         struct MeshRenderable
         {
@@ -106,6 +105,7 @@ namespace sl
         Shader* LoadShader(const std::string& vertex, const std::string& fragment, bool isPath);
         void UnloadShader(Shader* shader);
 
+        //TODO: culling and sorting by z with transparent
         void DrawTexture(float x, float y, const Texture* texture);
         void DrawTexture(Vec2f pos, Vec2f size, const Texture* texture, Shader* shader = nullptr, bool flipX = false, bool flipY = false, float angle = 0.0f, Vec2f origin = Vec2f(0.0f, 0.0f), const RectF* pixelUV = nullptr, const Color& tint = Colors::White);
         void DrawTexture(const RectF& targetRect, const Texture* texture, Shader* shader = nullptr, bool flipX = false, bool flipY = false, float angle = 0.0f, Vec2f origin = Vec2f(0.0f, 0.0f), const RectF* pixelUV = nullptr, const Color& tint = Colors::White);
@@ -176,16 +176,13 @@ namespace sl
         unsigned int boundUBO = 0;
         //batch components
         Shader* currentShader = nullptr;
-        unsigned int vao = 0;
-        unsigned int vbo = 0;
-        unsigned int ibo = 0;
-        unsigned int instanceSSBO = 0;
-        unsigned int instanceSSBOBindingPoint = 1;
         size_t maxQuadsInBatch = 10000;
         // renderables containers
         //2d
-        std::vector<QuadVertex> verticesQuads;
-        std::vector<unsigned int> indicesQuads;
+        unsigned int quadVao= 0;
+        unsigned int quadVbo = 0;
+        unsigned int quadInstanceVbo = 0;
+        std::vector<QuadInstanceData> quadInstanceDataBuffer;
         std::unordered_map<Shader*, std::vector<std::unique_ptr<QuadRenderable>>> opaqueQuads;
         std::unordered_map<Shader*, std::vector<std::unique_ptr<QuadRenderable>>> transparentQuads;
         //3d
