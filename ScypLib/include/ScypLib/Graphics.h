@@ -105,7 +105,6 @@ namespace sl
         Shader* LoadShader(const std::string& vertex, const std::string& fragment, bool isPath);
         void UnloadShader(Shader* shader);
 
-        //TODO: culling and sorting by z with transparent
         void DrawTexture(float x, float y, const Texture* texture);
         void DrawTexture(Vec2f pos, Vec2f size, const Texture* texture, Shader* shader = nullptr, bool flipX = false, bool flipY = false, float angle = 0.0f, Vec2f origin = Vec2f(0.0f, 0.0f), const RectF* pixelUV = nullptr, const Color& tint = Colors::White);
         void DrawTexture(const RectF& targetRect, const Texture* texture, Shader* shader = nullptr, bool flipX = false, bool flipY = false, float angle = 0.0f, Vec2f origin = Vec2f(0.0f, 0.0f), const RectF* pixelUV = nullptr, const Color& tint = Colors::White);
@@ -138,6 +137,7 @@ namespace sl
         void ClearQuadBatchData();
         void RenderQuads();
         void FlushQuadBatch();
+        bool IsQuadOffscreen(const RectF& rect) const;
         void UploadRenderableQuad(QuadRenderable* renderable);
         int GetTextureSlot(const Texture* texture);
         const int GetTextureSlotLimit() const { return maxTextureSlots; };

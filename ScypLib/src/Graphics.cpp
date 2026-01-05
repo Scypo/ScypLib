@@ -46,8 +46,10 @@ namespace sl
 			    gl_Position = projection * view * iModel * vec4(aPosition, 1.0);
 				int corner = gl_VertexID & 3;
 				vec2 uv;
-				uv.x = mix(iUV.x, iUV.y, aPosition.x);
-				uv.y = mix(iUV.w, iUV.z, aPosition.y);
+				vec2 local01 = aPosition.xy + vec2(0.5, 0.5);
+   
+				uv.x = mix(iUV.x, iUV.y, local01.x);
+				uv.y = mix(iUV.w, iUV.z, local01.y);
 				vTexCoord = uv;
 			    
 			    vColorTint = iColor;
@@ -77,15 +79,15 @@ namespace sl
 		SetDefaultShader(builtInShader);
 		currentShader = defaultShader;
 
-		constexpr float quadVertices[] = 
+		constexpr float quadVertices[] =
 		{
-			0.0f, 0.0f, 0.0f,  // top-left
-			1.0f, 0.0f, 0.0f,  // top-right
-			1.0f, 1.0f, 0.0f,  // bottom-right
+			-0.5f, -0.5f, 0.0f,  // top-left
+			 0.5f, -0.5f, 0.0f,  // top-right
+			 0.5f,  0.5f, 0.0f,  // bottom-right
 
-			0.0f, 0.0f, 0.0f,  // top-left
-			1.0f, 1.0f, 0.0f,  // bottom-right
-			0.0f, 1.0f, 0.0f   // bottom-left
+			-0.5f, -0.5f, 0.0f,  // top-left
+			 0.5f,  0.5f, 0.0f,  // bottom-right
+			-0.5f,  0.5f, 0.0f   // bottom-left
 		};
 
 		glGenVertexArrays(1, &quadVao);
@@ -308,8 +310,8 @@ namespace sl
 		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
 		assert(texture && "Failed to draw texture. Texture is nullptr");
 		Mat4f model(1.0f);
+		model.Translate(Vec3f(x + float(texture->GetWidth()) * 0.5f, y + float(texture->GetHeight()) * 0.5f, curDrawDepth));
 		model.Scale(Vec3f(float(texture->GetWidth()), float(texture->GetHeight()), 1.0f));
-		model.Translate(Vec3f(x, y, curDrawDepth));
 		auto renderable = std::make_unique<QuadRenderable>(model, texture, RectF(0.0f, 1.0f, 0.0f, 1.0f), Colors::White, curDrawDepth);
 		if (texture->IsBinaryAlpha()) opaqueQuads[defaultShader].emplace_back(std::move(renderable));
 		else transparentQuads[defaultShader].emplace_back(std::move(renderable));
@@ -322,16 +324,17 @@ namespace sl
 		RectF finalUV(0.0f, 1.0f, 0.0f, 1.0f);
 
 		Mat4f model(1.0f);
-		model.Scale(Vec3f(size, 1.0f));
+		
 		if (!shader) shader = defaultShader;
 		if (uv) finalUV = *uv / Vec2f(float(texture->GetWidth()), float(texture->GetHeight()));
 		if (flipX) std::swap(finalUV.left, finalUV.right);
 		if (flipY) std::swap(finalUV.top, finalUV.bottom);
-		if (angle != 0)
-		{
-			//TODO
-		}
-		model.Translate(Vec3f(pos, curDrawDepth));
+		
+		
+		model.Translate(Vec3f(pos.x + size.x * 0.5f, pos.y + size.y * 0.5f, curDrawDepth));
+		model.Scale(Vec3f(size, 1.0f));
+		model.Rotate(Vec3f(0.0f, 0.0f, ToRadians(angle)));
+		
 		auto renderable = std::make_unique<QuadRenderable>(model, texture, finalUV, tint, curDrawDepth);
 		if (texture->IsBinaryAlpha() && (tint.a == 1.0f || tint.a == 0.0f)) opaqueQuads[shader].emplace_back(std::move(renderable));
 		else transparentQuads[shader].emplace_back(std::move(renderable));
@@ -350,16 +353,14 @@ namespace sl
 		Vec2f pos = sprite.GetPos();
 		Vec2f size = sprite.GetSize();
 		assert(size.x > 0.0f && size.y > 0.0f);
-		model.Scale(Vec3f(size, 1.0f));
+		
 		Shader* shader = sprite.GetShader();
 		if (!shader) shader = defaultShader;
-		if (sprite.GetRotation() != 0)
-		{
-			Vec2f origin = sprite.GetOrigin();
-			//TODO
-			//pos = pos.Rotate(ToRadians(sprite.GetRotation()), origin);
-		}
-		model.Translate(Vec3f(pos, curDrawDepth));
+		Vec2f origin = sprite.GetOrigin();
+		model.Translate(Vec3f(pos.x + size.x * 0.5f, pos.y + size.y * 0.5f, curDrawDepth));
+		model.Scale(Vec3f(size, 1.0f));
+		model.Rotate(Vec3f(0.0f, 0.0f, ToRadians(sprite.GetRotation())));
+			
 		auto renderable = std::make_unique<QuadRenderable>(model, sprite.GetTexture(), sprite.GetNDCUV(), sprite.GetColorTint(), curDrawDepth);
 
 		if (sprite.GetTexture()->IsBinaryAlpha() && (sprite.GetColorTint().a == 1.0f || sprite.GetColorTint().a == 0.0f)) opaqueQuads[shader].emplace_back(std::move(renderable));
@@ -380,15 +381,10 @@ namespace sl
 		if (animatedSprite.IsFlippedX()) std::swap(uv.left, uv.right);
 		if (animatedSprite.IsFlippedY()) std::swap(uv.top, uv.bottom);
 
+		model.Translate(Vec3f(pos.x + size.x * 0.5f, pos.y + size.y * 0.5f, curDrawDepth));
 		model.Scale(Vec3f(size, 1.0f));
+		model.Rotate(Vec3f(0.0f, 0.0f, ToRadians(animatedSprite.GetRotation())));
 
-		if (animatedSprite.GetRotation() != 0)
-		{
-			Vec2f origin = animatedSprite.GetOrigin();
-			
-			pos = pos.Rotate(ToRadians(animatedSprite.GetRotation()), origin);
-		}
-		model.Translate(Vec3f(pos, curDrawDepth));
 		auto renderable = std::make_unique<QuadRenderable>(model, animatedSprite.GetTexture(), animatedSprite.GetNDCUV(), animatedSprite.GetColorTint(), curDrawDepth);
 
 		if (animatedSprite.GetTexture()->IsBinaryAlpha() && (animatedSprite.GetColorTint().a == 1.0f || animatedSprite.GetColorTint().a == 0.0f)) opaqueQuads[shader].emplace_back(std::move(renderable));
@@ -397,32 +393,44 @@ namespace sl
 
 	void Graphics::DrawLine(float x1, float y1, float x2, float y2, float thickness, const Color& c, Shader* shader)
 	{
-		//TODO
 		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
-		Vec2f pos1 = { x1,y1 };
-		Vec2f pos2 = { x1,y1 };
+
+		if (!shader)
+			shader = defaultShader;
+
 		float dx = x2 - x1;
 		float dy = y2 - y1;
+
 		float length = std::sqrt(dx * dx + dy * dy);
+		if (length <= 0.0001f) return;
+
 		float angle = std::atan2(dy, dx);
-		if (!shader) shader = defaultShader;
-		float cx = (x1 + x2) / 2.0f;
-		float cy = (y1 + y2) / 2.0f;
 
-		//Vec2f pos = pos.Rotate(ToRadians(angle), origin);
+		float cx = (x1 + x2) * 0.5f;
+		float cy = (y1 + y2) * 0.5f;
 
-		//auto renderable = std::make_unique<QuadRenderable>(Vec3f(x1, y1 - thickness / 2.0f, curDrawDepth), RectF(0.0f, 1.0f, 0.0f, 1.0f), Vec2f(length, thickness), blankTexture, c);
+		Mat4f model(1.0f);
 
-		//if (c.a == 0.0f || c.a == 1.0f) opaqueQuads[shader].emplace_back(std::move(renderable));
-		//else transparentQuads[shader].emplace_back(std::move(renderable));
+		model.Translate(Vec3f(cx, cy, curDrawDepth));
+		model.Scale(Vec3f(length, thickness, 1.0f));
+		model.Rotate(Vec3f(0.0f, 0.0f, angle));
+
+		RectF uv(0.0f, 1.0f, 0.0f, 1.0f);
+
+		auto renderable = std::make_unique<QuadRenderable>(model, blankTexture, uv, c, curDrawDepth );
+
+		if (c.a == 1.0f || c.a == 0.0f) opaqueQuads[shader].emplace_back(std::move(renderable));
+		else transparentQuads[shader].emplace_back(std::move(renderable));
 	}
 
 	void Graphics::DrawRect(const RectF& rect, const Color& c)
 	{
 		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
 		Mat4f model(1.0f);
-		model.Scale(Vec3f(rect.GetSize(), 1.0f));
+		
 		model.Translate(Vec3f(rect.left, rect.top, curDrawDepth));
+		model.Scale(Vec3f(rect.GetSize(), 1.0f));
+
 		auto renderable = std::make_unique<QuadRenderable>(model, blankTexture, RectF(0.0f, 1.0f, 0.0f, 1.0f), c, curDrawDepth);
 		if (c.a == 0.0f || c.a == 1.0f) opaqueQuads[defaultShader].emplace_back(std::move(renderable));
 		else transparentQuads[defaultShader].emplace_back(std::move(renderable));
@@ -443,16 +451,12 @@ namespace sl
 		assert(drawMode == DrawMode::Sprite2d && "Attempt to draw in 2d in non 2d view");
 
 		if (!shader) shader = defaultShader;
-		Mat4f model(1.0f);
-		Vec2f center = rect.GetCenter();
-		Vec2f pos = Vec2f(rect.left, rect.top);
-		pos = pos.Rotate(ToRadians(angle), center);
+		Mat4f model(1.0f);	
+		
+		model.Translate(Vec3f(rect.left + rect.GetWidth() * 0.5f, rect.top + rect.GetHeight() * 0.5f, curDrawDepth));
 		model.Scale(Vec3f(rect.GetSize(), 1.0f));
-		if (angle != 0.0f);
-		{
-			model.Rotate(Vec3f(0.0f, 0.0f, angle));
-		}
-		model.Translate(Vec3f(rect.left, rect.top, 0.0f));
+		model.Rotate(Vec3f(0.0f, 0.0f, ToRadians(angle)));
+
 		auto renderable = std::make_unique<QuadRenderable>(model, blankTexture, RectF(0.0f, 1.0f, 0.0f, 1.0f), c, curDrawDepth);
 		if (c.a == 0.0f || c.a == 1.0f) opaqueQuads[shader].emplace_back(std::move(renderable));
 		else transparentQuads[shader].emplace_back(std::move(renderable));
@@ -713,7 +717,7 @@ namespace sl
 			std::sort(sortedTransparent.begin(), sortedTransparent.end(),
 				[&](const auto& a, const auto& b)
 				{
-					if(a.second == b.second) return a.second->texture < b.second->texture;
+					if(a.second->z == b.second->z) return a.second->texture < b.second->texture;
 					return a.second->z < b.second->z;
 				});
 
@@ -999,6 +1003,7 @@ namespace sl
 				availableSlots.erase(slot);
 			}
 		}
+		assert(textureToSlot[texture] >= 0);
 		lru.Push(texture);
 	}
 

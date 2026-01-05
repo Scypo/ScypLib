@@ -9,8 +9,8 @@ namespace sl
     {
     public:
         Vec2() = default;
-        Vec2(T x_in, T y_in)
-            : x(x_in), y(y_in) {}
+        Vec2(T x, T y)
+            : x(x), y(y) {}
 
         Vec2(const Vec2& other) = default;
         Vec2(Vec2&& other) noexcept = default;
@@ -77,7 +77,7 @@ namespace sl
             *this = *this * rhs;
             return *this;
         }
-
+         
         Vec2 operator/(T rhs) const
         {
             return Vec2(x / rhs, y / rhs);
