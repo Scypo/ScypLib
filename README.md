@@ -1,21 +1,21 @@
-# 🎮 ScypLib
+# ScypLib
 
 **ScypLib** is a fast and lightweight 2D graphics framework written in modern C++20 using OpenGL. It provides a powerful and flexible rendering backend with batching, texture/shader/font management, custom shader support, and basic audio integration — all packed as a simple static library.
 
 ---
 
-## 🚀 Features
+## Features
 
-- 🔥 Efficient OpenGL 4.5-based renderer
-- 🧱 Batched 2D rendering
-- 🎨 Texture and sprite drawing with transform, color tinting, and UV mapping
-- 📜 Custom shader pipeline via uniform and shader storage buffers
-- 🖼️ Font rendering with stb_truetype
-- 🔉 Simple audio playback using miniaudio
-- 🗔 Window and input handling via GLFW
-- 🤖 Entity component system
+-  Efficient OpenGL 4.5-based renderer
+-  Batched 2D rendering
+-  Texture and sprite drawing with transform, color tinting, and UV mapping
+-  Custom shader pipeline via uniform and shader storage buffers
+-  Font rendering with stb_truetype
+-  Simple audio playback using miniaudio
+-  Window and input handling via GLFW
+-  Entity component system
 ---
-## 🔧 Using ScypLib in Your Project
+##  Using ScypLib in Your Project
 
 ### 1. Add Include Directories
 Go to your project settings and add the following paths under **C/C++ → General → Additional Include Directories**:
@@ -42,7 +42,7 @@ Go to your project settings and add the following paths under **Linker → Gener
 ### 5. Include Headers and Build:
    Include ScypLib and GLFW headers in your source files and build.
 ---
-## 🧰 Dependencies
+##  Dependencies
 
 ScypLib depends on the following open-source libraries:
 
@@ -56,7 +56,7 @@ ScypLib depends on the following open-source libraries:
 
 ---
 
-## 🧪 Shader Structure
+##  Shader Structure
 
 ScypLib supports **custom GLSL shaders** using SSBO/UBO layouts. To use them, your shader must follow this layout:
 
