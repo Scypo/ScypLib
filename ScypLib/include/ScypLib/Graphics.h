@@ -106,8 +106,8 @@ namespace sl
         void UnloadShader(Shader* shader);
 
         void DrawTexture(float x, float y, const Texture* texture);
-        void DrawTexture(Vec2f pos, Vec2f size, const Texture* texture, Shader* shader = nullptr, bool flipX = false, bool flipY = false, float angle = 0.0f, Vec2f origin = Vec2f(0.0f, 0.0f), const RectF* pixelUV = nullptr, const Color& tint = Colors::White);
-        void DrawTexture(const RectF& targetRect, const Texture* texture, Shader* shader = nullptr, bool flipX = false, bool flipY = false, float angle = 0.0f, Vec2f origin = Vec2f(0.0f, 0.0f), const RectF* pixelUV = nullptr, const Color& tint = Colors::White);
+        void DrawTexture(Vec2f pos, Vec2f size, const Texture* texture, Shader* shader = nullptr, bool flipX = false, bool flipY = false, float angle = 0.0f, Vec2f* pivot = nullptr, const RectF* pixelUV = nullptr, const Color& tint = Colors::White);
+        void DrawTexture(const RectF& targetRect, const Texture* texture, Shader* shader = nullptr, bool flipX = false, bool flipY = false, float angle = 0.0f, Vec2f* pivot = nullptr, const RectF* pixelUV = nullptr, const Color& tint = Colors::White);
         void DrawSprite(const Sprite& sprite);
         void DrawAnimatedSprite(const AnimatedSprite& animatedSprite);
         void DrawLine(float x1, float y1, float x2, float y2, float thickness, const Color& c, Shader* shader = nullptr);

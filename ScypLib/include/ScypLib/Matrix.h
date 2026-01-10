@@ -10,128 +10,141 @@ namespace sl
         float radians = angle * pi / 180.0f;
         return radians;
     }
-    template<typename T, size_t N, size_t M>
-    class Mat
+    template<typename T>
+    class Mat4
     {
     public:
-        Mat(T val = T(1.0f))
+        Mat4(T val = T(1))
         {
-            for (size_t i = 0; i < N; i++)
-            {
-                for (size_t j = 0; j < M; j++)
-                {
-                    mat[i][j] = (i == j) ? val : T(0);
-                }
-            }
+            for (int i = 0; i < 16; i++) mat[i] = T(0);
+            mat[0] = mat[5] = mat[10] = mat[15] = val;
+        }
+        void Identity()
+        {
+            for (int i = 0; i < 16; i++) mat[i] = T(0);
+            mat[0] = mat[5] = mat[10] = mat[15] = T(1);
+        }
+        void Translate(const Vec3<T>& v)
+        {
+            Mat4<T> m(T(1));
+            m[12] = v.x;
+            m[13] = v.y;
+            m[14] = v.z;
+
+            *this = m * *this;
         }
 
-        void Translate(const Vec3<T>& v) requires (N == 4 && M == 4)
+        void Scale(const Vec3<T>& v)
         {
-            Mat<T, 4, 4> t(1);
-            t.mat[3][0] = v.x;
-            t.mat[3][1] = v.y;
-            t.mat[3][2] = v.z;
-
-            *this = t * *this;
+            Mat4<T> m(T(1));
+            m[0] = v.x;
+            m[5] = v.y;
+            m[10] = v.z;
+            *this = m * *this;
         }
 
-        void Scale(const Vec3<T>& v) requires (N == 4 && M == 4)
-        {
-            mat[0][0] *= v.x;
-            mat[1][1] *= v.y;
-            mat[2][2] *= v.z;
-        }
-
-        void Rotate(const Vec3<T>& v) requires (N == 4 && M == 4)
+        void Rotate(const Vec3<T>& v)
         {
             T cx = std::cos(v.x), sx = std::sin(v.x);
             T cy = std::cos(v.y), sy = std::sin(v.y);
             T cz = std::cos(v.z), sz = std::sin(v.z);
 
-            Mat<T, 4, 4> Rx(1);
-            Rx.mat[1][1] = cx;  Rx.mat[1][2] = -sx;
-            Rx.mat[2][1] = sx;  Rx.mat[2][2] = cx;
+            Mat4<T> Rz(T(1)), Ry(T(1)), Rx(T(1));
+            
+            Rz[0] = cz;
+            Rz[1] = sz;
+            Rz[4] = -sz;
+            Rz[5] = cz;
 
-            Mat<T, 4, 4> Ry(1);
-            Ry.mat[0][0] = cy;  Ry.mat[0][2] = sy;
-            Ry.mat[2][0] = -sy; Ry.mat[2][2] = cy;
+            Ry[0] = cy;
+            Ry[2] = -sy;
+            Ry[8] = sy;
+            Ry[10] = cy;
 
-            Mat<T, 4, 4> Rz(1);
-            Rz.mat[0][0] = cz;  Rz.mat[0][1] = -sz;
-            Rz.mat[1][0] = sz;  Rz.mat[1][1] = cz;
+            Rx[5] = cx;
+            Rx[6] = sx;
+            Rx[9] = -sx;
+            Rx[10] = cx;
 
             *this = Rz * Ry * Rx * (*this);
         }
 
         T* Data()
         {
-            return &mat[0][0];
+            return mat;
         }
 
         const T* Data() const
         {
-            return &mat[0][0];
+            return mat;
         }
-        Mat<T, N, M> operator*(const Mat<T, N, M>& other) const
+        T& operator[](int index) { return mat[index]; }
+        const T& operator[](int index) const { return mat[index]; }
+        Mat4<T> operator*(const Mat4<T>& other) const
         {
-            Mat<T, N, M> result(T(0));
+            Mat4<T> res(T(0));
 
-            for (size_t i = 0; i < N; i++)
+            for (int col = 0; col < 4; col++)
             {
-                for (size_t j = 0; j < M; j++)
+                for (int row = 0; row < 4; row++)
                 {
-                    for (size_t k = 0; k < N; k++)
+                    for (int i = 0; i < 4; i++)
                     {
-                        result.mat[i][j] += mat[i][k] * other.mat[k][j];
+                        res.mat[col * 4 + row] +=
+                            mat[i * 4 + row] * other.mat[col * 4 + i];
                     }
                 }
             }
 
-            return result;
+            return res;
         }
 
     private:
-        T mat[N][M];
+        T mat[16];
     };
 
     template<typename T>
-    inline Mat<T, 4, 4> Ortho(T left, T right, T bottom, T top, T near, T far)
+    inline Mat4<T> Ortho(T left, T right, T bottom, T top, T zNear, T zFar)
     {
-        Mat<T, 4, 4> result(1);
+        Mat4 r(T(1));
 
-        T* m = result.Data();
-        m[0] = T(2) / (right - left);
-        m[5] = T(2) / (top - bottom);
-        m[10] = -T(2) / (far - near);
+        r[0] = T(2) / (right - left);
+        r[5] = T(2) / (top - bottom);
+        r[10] = T(-2) / (zFar - zNear);
 
-        m[12] = -(right + left) / (right - left);
-        m[13] = -(top + bottom) / (top - bottom);
-        m[14] = -(far + near) / (far - near);
+        r[12] = -(right + left) / (right - left);
+        r[13] = -(top + bottom) / (top - bottom);
+        r[14] = -(zFar + zNear) / (zFar - zNear);
 
-        return result;
+        return r;
     }
     template<typename T>
-    inline Mat<T, 4, 4> LookAt(const Vec3<T>& eye, const Vec3<T>& center, const Vec3<T>& up)
+    inline Mat4<T> LookAt(const Vec3<T>& eye, const Vec3<T>& center, const Vec3<T>& up)
     {
-        Vec3<T> f = (center - eye).Normalize();
-        Vec3<T> s = f.Cross(up).Normalize();
-        Vec3<T> u = s.Cross(f);
+        Vec3<T> f = (center - eye).Normalized();
+        Vec3<T> s = f.Cross(up).Normalized();
+        Vec3<T> u = s.Cross(f);   
 
-        Mat<T, 4, 4> result(1);
+        Mat4 r(T(1));
 
-        T* m = result.Data();
-        m[0] = s.x;   m[1] = u.x;   m[2] = -f.x;   m[3] = T(0);
-        m[4] = s.y;   m[5] = u.y;   m[6] = -f.y;   m[7] = T(0);
-        m[8] = s.z;   m[9] = u.z;   m[10] = -f.z;  m[11] = T(0);
+        r[0] = s.x;
+        r[1] = u.x;
+        r[2] = -f.x;
 
-        m[12] = -s.Dot(eye);
-        m[13] = -u.Dot(eye);
-        m[14] = f.Dot(eye);
-        m[15] = T(1);
+        r[4] = s.y;
+        r[5] = u.y;
+        r[6] = -f.y;
 
-        return result;
+        r[8] = s.z;
+        r[9] = u.z;
+        r[10] = -f.z;
+
+        r[12] = -s.Dot(eye);
+        r[13] = -u.Dot(eye);
+        r[14] = f.Dot(eye);
+
+        return r;
     }
-
-    using Mat4f = Mat<float, 4, 4>;
-    using Mat4d = Mat<double, 4, 4>;
+    using Mat4f = Mat4<float>;
+    using Mat4d = Mat4<double>;
 }

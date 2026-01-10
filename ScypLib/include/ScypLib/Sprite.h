@@ -20,9 +20,9 @@ namespace sl
 		{
 			SetSize(Vec2f(float(texture->GetWidth()), float(texture->GetHeight())));
 		}
-		Sprite(Texture* texture, float angle, Vec2f pos, Vec2f origin, Vec2f size,
+		Sprite(Texture* texture, float angle, Vec2f pos, Vec2f pivot, Vec2f size,
 			RectF uv, Color colorTint, bool flipX, bool flipY)
-			: texture(texture), angle(angle), pos(pos), origin(origin), size(size), uv(uv), colorTint(colorTint), flipX(flipX), flipY(flipY)
+			: texture(texture), angle(angle), pos(pos), pivot(pivot), size(size), uv(uv), colorTint(colorTint), flipX(flipX), flipY(flipY)
 		{
 			this->uv = uv / Vec2f(float(texture->GetWidth()), float(texture->GetHeight()));
 		}
@@ -33,7 +33,7 @@ namespace sl
 		Shader* GetShader() const { return shader; }
 		Vec2f GetPos() const { return pos; }
 		Vec2f GetSize() const { return size; }
-		Vec2f GetOrigin() const { return origin; }
+		Vec2f GetPivot() const { return pivot; }
 		RectF GetRect() const { return RectF(pos, size.x, size.y); }
 		RectF GetUV() const { return uv * Vec2f(float(texture->GetWidth()), float(texture->GetHeight())); }
 		RectF GetNDCUV() const { return uv; }
@@ -81,9 +81,9 @@ namespace sl
 			assert(texture);
 			this->uv = uv / Vec2f(float(texture->GetWidth()), float(texture->GetHeight()));
 		}
-		void SetOrigin(Vec2f origin)
+		void SetPivot(Vec2f pivot)
 		{
-			this->origin = origin;
+			this->pivot = pivot;
 		}
 		void SetColorTint(Color tint)
 		{
@@ -94,7 +94,7 @@ namespace sl
 		Shader* shader = nullptr;
 		float angle = 0.0f;
 		Vec2f pos = { 0,0 };
-		Vec2f origin = { 0,0 };
+		Vec2f pivot = { 0,0 };
 		Vec2f size = { 0,0 };
 		RectF uv = { 0.0f,1.0f,0.0f,1.0f };
 		Color colorTint = Colors::White;

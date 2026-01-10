@@ -1,6 +1,7 @@
 #pragma once
 #include <cmath>
 #include <functional>
+#include<cassert>
 
 namespace sl
 {
@@ -80,10 +81,23 @@ namespace sl
          
         Vec2 operator/(T rhs) const
         {
+            assert(rhs != T(0));
             return Vec2(x / rhs, y / rhs);
         }
 
         Vec2& operator/=(T rhs)
+        {
+            *this = *this / rhs;
+            return *this;
+        }
+
+        Vec2 operator/(Vec2<T> rhs)
+        {
+            assert(rhs.x != T(0) && rhs.y != T(0));
+            return Vec2( x / rhs.x, y / rhs.y );
+        }
+
+        Vec2 operator/=(Vec2<T> rhs)
         {
             *this = *this / rhs;
             return *this;
