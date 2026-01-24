@@ -15,8 +15,9 @@ namespace sl
 		: Graphics(wnd, float(wnd->GetWidth()), float(wnd->GetHeight())) {}
 
 	Graphics::Graphics(Window* wnd, float canvasWidth, float canvasHeight)
-		: window(wnd), canvasWidth(canvasWidth), canvasHeight(canvasHeight)
+		: window(wnd)
 	{
+		glDisable(GL_CULL_FACE);
 		glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxTextureSlots);
 		for (int i = 0; i < maxTextureSlots; i++) availableSlots.insert(i);
 		SetVSyncInterval(1);
@@ -127,9 +128,13 @@ namespace sl
 		glBufferData(GL_UNIFORM_BUFFER, sizeof(ViewProjMat), &vpMat, GL_DYNAMIC_DRAW);
 		glBindBufferBase(GL_UNIFORM_BUFFER, vpMatUboBindingPoint, vpMatUbo);
 
-		SetCanvasSize(Vec2f(1.0f, 1.0f));//SMTHING BUGGER IF CALLED TWICE IT WORKS PROPERLY OR OUTSIDE OF CONSTRUCTOR
-		SetCanvasSize(Vec2f(window->GetSize()));
 
+		//SMTHING BUGGER IF CALLED TWICE IT WORKS PROPERLY OR OUTSIDE OF CONSTRUCTOR
+		RegisterCanvasChange(1.0f, 1.0f);
+		ApplyCanvasChange();
+		RegisterCanvasChange(canvasWidth, canvasHeight);
+		ApplyCanvasChange();
+		ClearVP();
 		quadInstanceDataBuffer.reserve(maxQuadsInBatch * 4);
 	}
 
@@ -171,7 +176,7 @@ namespace sl
 		glClear(GL_COLOR_BUFFER_BIT);
 		glDisable(GL_DEPTH_TEST);
 		if (!shader) shader = defaultShader;
-		DrawTexture(GetCanvasRect(), framebufferTexture, shader);
+		DrawTexture(Vec2f(-1.0f, -1.0f), Vec2f(2.0f, 2.0f), framebufferTexture, shader);
 		RenderQuads();
 		glfwSwapBuffers(reinterpret_cast<GLFWwindow*>(window->GetWindowBackend()));
 		glEnable(GL_DEPTH_TEST);
@@ -184,7 +189,7 @@ namespace sl
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, window->GetWidth(), window->GetHeight());
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-		DrawTexture(GetCanvasRect(), framebufferTexture, defaultShader);
+		DrawTexture(Vec2f(-1.0f, -1.0f), Vec2f(2.0f, 2.0f), framebufferTexture, defaultShader);
 		RenderQuads();
 		glfwSwapBuffers(reinterpret_cast<GLFWwindow*>(window->GetWindowBackend()));
 		glEnable(GL_DEPTH_TEST);
@@ -193,59 +198,35 @@ namespace sl
 	void Graphics::BeginView(Vec2f cameraPosition, float zoom)
 	{
 		drawMode = DrawMode::Sprite2d;
-		cam2d.pos = cameraPosition;
-		cam2d.zoom = zoom;
-		vpMat.view = Mat4f(1.0f);
-		Vec2f center = Vec2f(GetCanvasWidth() / 2.0f, GetCanvasHeight() / 2.0f);
-		vpMat.view.Translate(Vec3f(center.x, center.y, 0.0f));
-		vpMat.view.Scale(Vec3f(zoom, zoom, 1.0f));
-		vpMat.view.Translate(Vec3f(-center.x, -center.y, 0.0f));
-		vpMat.view.Translate(Vec3f(-cameraPosition.x, -cameraPosition.y, 0.0f));
-		BindUniformBuffer(vpMatUbo);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
+		ApplyCanvasChange();
+		SetVP2d(cameraPosition, zoom);
+	}
+
+	void Graphics::BeginView(Vec3f cameraPosition, Vec3f forward, Vec3f up, float fov, float near, float far)
+	{
+		drawMode = DrawMode::Quad3d;
+		cam3dPos = cameraPosition;
+		ApplyCanvasChange();
+		SetVP3d(cameraPosition, forward, up, fov, near, far);
 	}
 
 	void Graphics::EndView(std::vector<Shader*>& shaders)
 	{
-		if (drawMode == DrawMode::Sprite2d)
-		{
-			RenderQuads();
-		}
-		else if (drawMode == DrawMode::Quad3d)
-		{
-			RenderQuads();
-		}
-		drawMode = DrawMode::Sprite2d;
-		vpMat.view = Mat4f(1.0f);
-		cam2d.pos = { 0.0f,0.0f };
-		cam2d.zoom = 1.0f;
-		BindUniformBuffer(vpMatUbo);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
+		RenderQuads();
+		ClearVP();
 		ApplyPostProcessing(shaders);
 	}
 
 	void Graphics::EndView(Shader* shader)
 	{
-		if (drawMode == DrawMode::Sprite2d)
-		{
-			RenderQuads();
-		}
-		else if (drawMode == DrawMode::Quad3d)
-		{
-			RenderQuads();
-		}
-		drawMode = DrawMode::Sprite2d;
-		vpMat.view = Mat4f(1.0f);
-		cam2d.pos = { 0.0f,0.0f };
-		cam2d.zoom = 1.0f;
-		BindUniformBuffer(vpMatUbo);
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
+		RenderQuads();
+		ClearVP();
 		glDisable(GL_DEPTH_TEST);
 		if (!shader) shader = defaultShader;
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferTextureSecondary->GetHandle(), 0);
 		glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
-		DrawTexture(GetCanvasRect(), framebufferTexture, shader);
+		DrawTexture(Vec2f(-1.0f, -1.0f), Vec2f(2.0f, 2.0f), framebufferTexture, shader);
 		RenderQuads();
 		std::swap(framebufferTexture, framebufferTextureSecondary);
 		glEnable(GL_DEPTH_TEST);
@@ -258,17 +239,17 @@ namespace sl
 
 	void Graphics::SetCanvasSize(Vec2f size)
 	{
-		UpdateCanvasSize(size.x, size.y);
+		RegisterCanvasChange(size.x, size.y);
 	}
 
 	void Graphics::SetCanvasWidth(float width)
 	{
-		UpdateCanvasSize(width, canvasHeight);
+		RegisterCanvasChange(width, canvasSize.y);
 	}
 
 	void Graphics::SetCanvasHeight(float height)
 	{
-		UpdateCanvasSize(canvasWidth, height);
+		RegisterCanvasChange(canvasSize.x, height);
 	}
 
 	void Graphics::SetVSyncInterval(int interval)
@@ -286,7 +267,7 @@ namespace sl
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, currentTarget->GetHandle(), 0);
 			glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
-			DrawTexture(GetCanvasRect(), otherTarget, shader);
+			DrawTexture(Vec2f(-1.0f, -1.0f), Vec2f(2.0f, 2.0f), otherTarget, shader);
 			RenderQuads();
 			std::swap(currentTarget, otherTarget);
 		}
@@ -544,6 +525,33 @@ namespace sl
 		else transparentQuads[defaultShader].emplace_back(std::move(renderable));
 	}
 
+	void Graphics::DrawQuad(Vec3f pos, Vec2f size, Vec3f rotation, const Texture* texture, Shader* shader, const RectF* pixelUV, const Color& tint, bool flipX, bool flipY)
+	{
+		assert(drawMode == DrawMode::Quad3d && "Attempt to draw in 3d quad in 2d view");
+		assert(texture && "Failed to draw texture. Texture is nullptr");
+
+		Mat4f model(1.0f);
+		RectF finalUV(0.0f, 1.0f, 0.0f, 1.0f);
+		rotation.x = ToRadians(rotation.x);
+		rotation.y = ToRadians(rotation.y);
+		rotation.z = ToRadians(rotation.z);
+
+		if (!shader) shader = defaultShader;
+		if (!texture) texture = blankTexture;
+		if (pixelUV) finalUV = *pixelUV / Vec2f(float(texture->GetWidth()), float(texture->GetHeight()));
+		if (flipX) std::swap(finalUV.left, finalUV.right);
+		if (flipY) std::swap(finalUV.top, finalUV.bottom);
+
+		model.Translate(Vec3f(-0.5f, -0.5f, 0.0f));
+		model.Scale(Vec3f(size, 1.0f));
+		model.Rotate(rotation);
+		model.Translate(pos);
+
+		auto renderable = std::make_unique<QuadRenderable>(model, texture, finalUV, tint, pos.GetDistanceSq(cam3dPos));
+		if(texture->IsBinaryAlpha()) opaqueQuads[defaultShader].emplace_back(std::move(renderable));
+		else transparentQuads[defaultShader].emplace_back(std::move(renderable));
+	}
+
 	Color Graphics::GetPixel(int x, int y)
 	{
 		unsigned char pixelData[4];
@@ -558,35 +566,40 @@ namespace sl
 
 	RectF Graphics::GetCanvasRect() const
 	{
-		return RectF(0.0f, canvasWidth, 0.0f, canvasHeight);
+		return RectF(0.0f, canvasSize.x, 0.0f, canvasSize.y);
 	}
 
 	float Graphics::GetCanvasWidth() const
 	{
-		return canvasWidth;
+		return canvasSize.x;
 	}
 
 	float Graphics::GetCanvasHeight() const
 	{
-		return canvasHeight;
+		return canvasSize.y;
 	}
 
 	Vec2f Graphics::GetCanvasSize() const
 	{
-		return Vec2f(canvasWidth, canvasHeight);
+		return canvasSize;
 	}
 
-	void Graphics::UpdateCanvasSize(float width, float height)
+	void Graphics::RegisterCanvasChange(float width, float height)
 	{
-		if (width != canvasWidth || height != canvasHeight)
-		{
-			canvasWidth = width;
-			canvasHeight = height;
-			vpMat.projection = Ortho<float>(0.0f, canvasWidth, canvasHeight, 0.0f, -50.0f, 50.0f);
-			BindUniformBuffer(vpMatUbo);
-			glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
+		assert(width >= 1.0f && height >= 1.0f);
+		newCanvasSize = Vec2f(width, height);
+	}
 
-			size_t size = size_t(canvasWidth) * size_t(canvasHeight) * 4;
+	void Graphics::ApplyCanvasChange()
+	{
+		if (newCanvasSize.x != canvasSize.x || newCanvasSize.y != canvasSize.y)
+		{
+			canvasSize = newCanvasSize;
+			float width = canvasSize.x;
+			float height = canvasSize.y;
+			assert(width >= 1.0f && height >= 1.0f);
+
+			size_t size = size_t(width) * size_t(height) * 4;
 			unsigned char* buffer = (unsigned char*)malloc(size);
 			assert(buffer);
 			if (buffer)
@@ -594,8 +607,8 @@ namespace sl
 				if (framebufferTexture) UnloadTexture(framebufferTexture);
 				if (framebufferTextureSecondary) UnloadTexture(framebufferTextureSecondary);
 				memset(buffer, 0, size);
-				framebufferTexture = CreateTextureFromMemory(int(canvasWidth), int(canvasHeight), 4, buffer, TextureWrap::ClampToEdge, TextureFilter::Nearest, TextureFilter::Nearest);
-				framebufferTextureSecondary = CreateTextureFromMemory(int(canvasWidth), int(canvasHeight), 4, buffer, TextureWrap::ClampToEdge, TextureFilter::Nearest, TextureFilter::Nearest);
+				framebufferTexture = CreateTextureFromMemory(int(width), int(height), 4, buffer, TextureWrap::ClampToEdge, TextureFilter::Nearest, TextureFilter::Nearest);
+				framebufferTextureSecondary = CreateTextureFromMemory(int(width), int(height), 4, buffer, TextureWrap::ClampToEdge, TextureFilter::Nearest, TextureFilter::Nearest);
 				free(buffer);
 			}
 			assert(framebufferTexture);
@@ -611,7 +624,7 @@ namespace sl
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferTexture->GetHandle(), 0);
 			glGenRenderbuffers(1, &rbo);
 			glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, int(canvasWidth), int(canvasHeight));
+			glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, int(width), int(height));
 			glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
 
 			if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -619,6 +632,42 @@ namespace sl
 				throw std::runtime_error("Frame buffer is not complete");
 			}
 		}
+	}
+
+	void Graphics::SetVP2d(Vec2f pos, float zoom)
+	{
+		vpMat.view = Mat4f(1.0f);
+		Vec2f center = Vec2f(GetCanvasWidth() / 2.0f, GetCanvasHeight() / 2.0f);
+		vpMat.view.Translate(Vec3f(center.x, center.y, 0.0f));
+		vpMat.view.Scale(Vec3f(zoom, zoom, 1.0f));
+		vpMat.view.Translate(Vec3f(-center.x, -center.y, 0.0f));
+		vpMat.view.Translate(Vec3f(-pos.x, -pos.y, 0.0f));
+
+		vpMat.projection = Ortho<float>(0.0f, GetCanvasWidth(), GetCanvasHeight(), 0.0f, -50.0f, 50.0f);
+		BindUniformBuffer(vpMatUbo);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
+	}
+
+	void Graphics::SetVP3d(Vec3f cameraPosition, Vec3f forward, Vec3f up, float fov, float near, float far)
+	{
+		forward.Normalize();
+		up.Normalize();
+		Vec3f right = forward.Cross(up).GetNormalized();
+		up = right.Cross(forward);
+		up.Normalize();
+		vpMat.view = LookAt<float>(cameraPosition, cameraPosition + forward, up);
+		vpMat.projection = Perspective<float>(ToRadians(fov), GetCanvasWidth() / GetCanvasHeight(), near, far);
+		BindUniformBuffer(vpMatUbo);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
+	}
+
+	void Graphics::ClearVP()
+	{
+		drawMode = DrawMode::Sprite2d;
+		vpMat.view = Mat4f(1.0f);
+		vpMat.projection = Mat4f(1.0f);
+		BindUniformBuffer(vpMatUbo);
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(vpMat), &vpMat);
 	}
 
 	void Graphics::BindVertexArray(unsigned int vao)
@@ -684,10 +733,6 @@ namespace sl
 
 	void Graphics::RenderQuads()
 	{
-		Vec2f visibleSize(GetCanvasWidth() / cam2d.zoom, GetCanvasHeight() / cam2d.zoom);
-		Vec2f cameraCenter = cam2d.pos + Vec2f(GetCanvasWidth() / 2, GetCanvasHeight() / 2);
-		RectF visibleArea(cameraCenter - visibleSize / 2, visibleSize.x, visibleSize.y);
-
 		const Texture* prevTexture = nullptr;
 
 		if (!opaqueQuads.empty())
@@ -731,8 +776,8 @@ namespace sl
 			std::sort(sortedTransparent.begin(), sortedTransparent.end(),
 				[&](const auto& a, const auto& b)
 				{
-					if(a.second->z == b.second->z) return a.second->texture < b.second->texture;
-					return a.second->z < b.second->z;
+					if(a.second->distance == b.second->distance) return a.second->texture < b.second->texture;
+					return a.second->distance < b.second->distance;
 				});
 
 			glEnable(GL_BLEND);
@@ -871,7 +916,7 @@ namespace sl
 				buffer[i * 4 + 3] = a;
 			}
 			Texture* atlas = CreateTextureFromMemory(texWidth, texHeight, 4, buffer.data(), TextureWrap::ClampToEdge, TextureFilter::Nearest, TextureFilter::Nearest);
-			fonts[filepath] = std::make_unique<Font>(atlas, std::move(glyphData), realLineHeight, ascent, firstChar, lastChar);
+			fonts[filepath] = std::make_unique<Font>(atlas, std::move(glyphData), int(realLineHeight), ascent, firstChar, lastChar);
 		}
 		return fonts[filepath].get();
 	}
@@ -900,47 +945,6 @@ namespace sl
 		}
 	}
 
-	Mesh* Graphics::LoadMesh(const std::string& filepath)
-	{
-		if (!meshes.contains(filepath)) 
-		{
-			unsigned int meshvao;
-			unsigned int meshvbo;
-			unsigned int meshibo;
-
-			std::vector<MeshVertex> verts
-			{
-				{Vec3f(-0.5f,  0.5f, 0.0f), Vec2f(0.0f, 1.0f)}, // top-left
-				{Vec3f(0.5f,  0.5f, 0.0f), Vec2f(1.0f, 1.0f)}, // top-right
-				{Vec3f(0.5f, -0.5f, 0.0f), Vec2f(1.0f, 0.0f)}, // bottom-right
-				{Vec3f(-0.5f, -0.5f, 0.0f), Vec2f(0.0f, 0.0f)}  // bottom-left
-			};
-
-			std::vector<unsigned int> indices
-			{
-				0, 1, 2,
-				2, 3, 0
-			};
-
-			glGenVertexArrays(1, &meshvao);
-			BindVertexArray(meshvao);
-			
-			glGenBuffers(1, &meshvbo);
-			BindVertexBuffer(meshvbo);
-			glBufferData(GL_ARRAY_BUFFER, sizeof(MeshVertex) * verts.size(), verts.data(), GL_STATIC_DRAW);
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(MeshVertex), (void*)offsetof(MeshVertex, pos));//pos
-			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(MeshVertex), (void*)offsetof(MeshVertex, uv)); //uv
-			glEnableVertexAttribArray(1);
-			
-			glGenBuffers(1, &meshibo);
-			BindIndexBuffer(meshibo);
-			glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), indices.data(), GL_STATIC_DRAW);
-
-			meshes[filepath] = std::make_unique<Mesh>(meshvao, meshvbo, meshibo);
-		}
-		return meshes[filepath].get();
-	}
 
 	void Graphics::UnloadFont(Font* font)
 	{
@@ -1034,6 +1038,6 @@ namespace sl
 		availableSlots.clear();
 		for (int i = 0; i < maxTextureSlots; i++) availableSlots.insert(i);
 	}
-	Graphics::QuadRenderable::QuadRenderable(Mat4f model, const Texture* texture, RectF uv, Color color, float z)
-		: model(model), uv(uv), texture(texture), color(color), z(z) {}
+	Graphics::QuadRenderable::QuadRenderable(Mat4f model, const Texture* texture, RectF uv, Color color, float distance)
+		: model(model), uv(uv), texture(texture), color(color), distance(distance) {}
 }

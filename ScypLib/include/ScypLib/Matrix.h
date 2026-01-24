@@ -121,8 +121,10 @@ namespace sl
     template<typename T>
     inline Mat4<T> LookAt(const Vec3<T>& eye, const Vec3<T>& center, const Vec3<T>& up)
     {
-        Vec3<T> f = (center - eye).Normalized();
-        Vec3<T> s = f.Cross(up).Normalized();
+        Vec3<T> f = (center - eye);
+        f.Normalize();
+        Vec3<T> s = f.Cross(up);
+        s.Normalize();
         Vec3<T> u = s.Cross(f);   
 
         Mat4 r(T(1));
@@ -145,6 +147,22 @@ namespace sl
 
         return r;
     }
+    template<typename T>
+    inline Mat4<T> Perspective(T fovRadians, T aspect, T zNear, T zFar)
+    {
+        Mat4<T> r(T(0));
+
+        T tanHalfFov = std::tan(fovRadians / T(2));
+
+        r[0] = T(1) / (aspect * tanHalfFov);
+        r[5] = T(1) / (tanHalfFov);
+        r[10] = -(zFar + zNear) / (zFar - zNear);
+        r[11] = T(-1);
+        r[14] = -(T(2) * zFar * zNear) / (zFar - zNear);
+
+        return r;
+    }
+
     using Mat4f = Mat4<float>;
     using Mat4d = Mat4<double>;
 }

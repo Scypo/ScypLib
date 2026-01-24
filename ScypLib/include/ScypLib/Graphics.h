@@ -7,7 +7,6 @@
 #include"Window.h"
 #include"LRU.h"
 #include"Sprite.h"
-#include"Mesh.h"
 #include"Shader.h"
 #include"Texture.h"
 #include"Font.h"
@@ -19,7 +18,6 @@ namespace sl
     enum class DrawMode
     {
         Sprite2d,
-        Mesh3d,
         Quad3d
     };
     struct Camera2d
@@ -29,8 +27,10 @@ namespace sl
     };
     struct Camera3d
     {
-
-    };//TODO
+        Vec3f pos;
+        Vec3f forward;
+        Vec3f up;
+    };
     class Graphics
     {
     private:
@@ -53,27 +53,14 @@ namespace sl
 
             bool operator==(const QuadVertex& other) const;
         };
-        struct MeshVertex
-        {
-            Vec3f pos;
-            Vec2f uv;
-        };//TODO
         struct QuadRenderable
         {
-            QuadRenderable(Mat4f model, const Texture* texture, RectF uv, Color color, float z);
+            QuadRenderable(Mat4f model, const Texture* texture, RectF uv, Color color, float distance);
             Mat4f model;
             const Texture* texture = nullptr;
             RectF uv;
             Color color;
-            float z;
-        };
-        struct MeshRenderable
-        {
-            MeshRenderable(Vec3f pos, const Texture* texture, Mat4f transform, Color color) {};
-            Vec3f pos{};
-            const Texture* texture;
-            Mat4f transform;
-            Color color;
+            float distance;
         };
     public:
         Graphics(Window* wnd);
@@ -84,7 +71,7 @@ namespace sl
         void EndFrame(Shader* shader = nullptr);
         void EndFrame(std::vector<Shader*>& shaders);
         void BeginView(Vec2f cameraPosition = { 0.0f, 0.0f }, float zoom = 1.0f);
-        //void BeginView(Vec3f cameraPosition = { 0.0f, 0.0f, 0.0f }, Vec3f rotation);//TODO
+        void BeginView(Vec3f cameraPosition = { 0.0f, 0.0f, 0.0f }, Vec3f forward = { 1.0f, 0.0f, 0.0f }, Vec3f up = { 0.0f, 1.0f, 0.0f }, float fov = 90.0f, float near = 0.1f, float far = 1000.0f);
         void EndView(std::vector<Shader*>& shaders);
         void EndView(Shader* shader = nullptr);
         void SetDrawDepth(float depth);
@@ -98,7 +85,6 @@ namespace sl
 
         Texture* LoadTexture(const std::string& filepath, TextureWrap wrap = TextureWrap::ClampToEdge, TextureFilter minFilter = TextureFilter::Nearest, TextureFilter magFilter = TextureFilter::Nearest);
         Texture* CreateTextureFromMemory(int width, int height, int BPP, unsigned char* buffer, TextureWrap wrap, TextureFilter minFilter, TextureFilter magFilter);
-        Mesh* LoadMesh(const std::string& filepath);
         Font* LoadFont(const std::string& filepath, char firstChar, char lastChar);
         void UnloadTexture(Texture* texture);
         void UnloadFont(Font* font);
@@ -120,6 +106,8 @@ namespace sl
         void DrawText(Vec2f pos, Vec2f size, const std::string& text, Font* font, const Color& c);
         void PutPixel(float x, float y, const Color& c);
 
+        void DrawQuad(Vec3f pos, Vec2f size, Vec3f rotation, const Texture* texture, Shader* shader = nullptr, const RectF* pixelUV = nullptr, const Color& tint = Colors::White, bool flipX = false, bool flipY = false);
+
         Color GetPixel(int x, int y);
         RectF GetCanvasRect()const;
         float GetCanvasWidth()const;
@@ -133,11 +121,14 @@ namespace sl
         void BindIndexBuffer(unsigned int ibo);
         void BindVertexBuffer(unsigned int vbo);
     private:
-        void UpdateCanvasSize(float width, float height);
+        void RegisterCanvasChange(float width, float height);
+        void ApplyCanvasChange();
+        void SetVP2d(Vec2f pos, float zoom);
+        void SetVP3d(Vec3f cameraPosition, Vec3f forward, Vec3f up, float fov, float near, float far);
+        void ClearVP();
         void ClearQuadBatchData();
         void RenderQuads();
         void FlushQuadBatch();
-        bool IsQuadOffscreen(const RectF& rect) const;
         void UploadRenderableQuad(QuadRenderable* renderable);
         int GetTextureSlot(const Texture* texture);
         const int GetTextureSlotLimit() const { return maxTextureSlots; };
@@ -147,10 +138,9 @@ namespace sl
     private:
         //window and canvasdata
         Window* window = nullptr;
-        float canvasWidth = -1.0f;
-        float canvasHeight = -1.0f;
+        Vec2f canvasSize = Vec2f(-1.0f, -1.0f);
+        Vec2f newCanvasSize{};
         //framebuffer and camera
-        Camera2d cam2d = { Vec2f(0.0f,0.0f),1.0f };
         unsigned int fbo;
         unsigned int rbo;
         Texture* framebufferTexture = nullptr;
@@ -178,16 +168,14 @@ namespace sl
         Shader* currentShader = nullptr;
         size_t maxQuadsInBatch = 10000;
         // renderables containers
-        //2d
+        //2d and 3d quads
+        Vec3f cam3dPos{};
         unsigned int quadVao= 0;
         unsigned int quadVbo = 0;
         unsigned int quadInstanceVbo = 0;
         std::vector<QuadInstanceData> quadInstanceDataBuffer;
         std::unordered_map<Shader*, std::vector<std::unique_ptr<QuadRenderable>>> opaqueQuads;
         std::unordered_map<Shader*, std::vector<std::unique_ptr<QuadRenderable>>> transparentQuads;
-        //3d
-        std::unordered_map<Shader*, std::vector<std::unique_ptr<MeshRenderable>>> opaqueMeshes;
-        std::unordered_map<Shader*, std::vector<std::unique_ptr<MeshRenderable>>> transparentMeshes;
         //texture manager
         int maxTextureSlots = 0;
         LRU<const Texture*> lru;
@@ -199,7 +187,5 @@ namespace sl
         std::unordered_map<std::string, std::unique_ptr<Font>> fonts;
         //shaders
         std::unordered_map<std::string, std::unique_ptr<Shader>> shaders;
-        //meshes
-        std::unordered_map<std::string, std::unique_ptr<Mesh>> meshes;
     };
 }

@@ -103,7 +103,15 @@ namespace sl
         {
             return x * x + y * y + z * z;
         }
-
+        T GetDistance(const Vec3& other)
+        {
+            return std::sqrt(GetDistanceSq(other));
+        }
+        T GetDistanceSq(const Vec3& other)
+        {
+            Vec3 d = other - *this;
+            return d.Dot(d);
+        }
         Vec3& Normalize()
         {
             return *this = this->GetNormalized();
