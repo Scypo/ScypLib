@@ -6,7 +6,7 @@
 
 ## Features
 
--  Efficient OpenGL 4.5-based renderer
+-  Efficient OpenGL based renderer
 -  Batched 2D rendering
 -  Texture and sprite drawing with transform, color tinting, and UV mapping
 -  Custom shader pipeline via uniform and shader storage buffers
@@ -55,69 +55,55 @@ ScypLib depends on the following open-source libraries:
 | [miniaudio](https://miniaud.io/)   | Audio playback                   | Public Domain / MIT            |
 
 ---
-
-##  Shader Structure
-
-ScypLib supports **custom GLSL shaders** using SSBO/UBO layouts. To use them, your shader must follow this layout:
+## Shaders must follow this pattern.
 
 ### Vertex Shader (`example.vert`)
 
 ```glsl
-#version 450 core
+#version 330 core
 
 layout(location = 0) in vec3 aPosition;
-layout(location = 1) in vec2 aTexCoord;
-layout(location = 2) in float aInstanceIndex;
 
-struct InstanceData 
-{
-    mat4 transform;
-    vec4 colorTint;
-    float textureSlot;
-    float padding[3]; // padding to align std430
-};
+layout(location = 1) in vec4 iUV;
+layout(location = 2) in vec4 iColor;
+layout(location = 3) in mat4 iModel;		
 
-layout(std140, binding = 0) uniform CameraBuffer 
+layout(std140) uniform CameraBuffer 
 {
     mat4 view;
     mat4 projection;
 };
 
-layout(std430, binding = 1) readonly buffer instanceData
-{
-    InstanceData instances[];
-};
-
-out vec2 vTexCoord;
-out float vTexSlot;
+out vec2 vTexCoord;	
 out vec4 vColorTint;
 
 void main()
 {
-    InstanceData data = instances[int(aInstanceIndex)];
-    gl_Position = projection * view * data.transform * vec4(aPosition, 1.0);
-
-    vTexCoord = aTexCoord;
-    vTexSlot = data.textureSlot;
-    vColorTint = data.colorTint;
+    gl_Position = projection * view * iModel * vec4(aPosition, 1.0);
+	int corner = gl_VertexID & 3;
+	vec2 uv;
+   
+	uv.x = mix(iUV.x, iUV.y, aPosition.x);
+	uv.y = mix(iUV.w, iUV.z, aPosition.y);
+	vTexCoord = uv;
+    
+    vColorTint = iColor;
 }
 ```
 ### Fragment Shader (`example.frag`)
 
 ```glsl
-#version 450 core
+#version 330 core
 
 in vec2 vTexCoord;
-in float vTexSlot;
 in vec4 vColorTint;
 
 out vec4 FragColor;
-uniform sampler2D uTextures[32];
+uniform sampler2D uTexture;
 
 void main()
 {
-    int slot = int(vTexSlot);
-    vec4 texColor = texture(uTextures[slot], vTexCoord);
+    vec4 texColor = texture(uTexture, vTexCoord);
     vec4 finalColor = texColor * vColorTint;
 
     if (finalColor.a < 0.1) discard;
