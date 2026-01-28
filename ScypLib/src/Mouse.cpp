@@ -10,6 +10,9 @@ namespace sl
     float Mouse::GetPosX() const { return pos.x; }
     float Mouse::GetScrollOffsetX() const { return scrollOffset.x; }
     float Mouse::GetScrollOffsetY() const { return scrollOffset.y; }
+    Vec2f Mouse::GetMoveOffset() const { return moveOffset; }
+    float Mouse::GetMoveOffsetX() const { return moveOffset.x; }
+    float Mouse::GetMoveOffsetY() const { return moveOffset.y; }
     float Mouse::GetPosY() const { return pos.y; }
     bool Mouse::LeftIsPressed() const { return leftIsPressed; }
     bool Mouse::RightIsPressed() const { return rightIsPressed; }
@@ -25,7 +28,8 @@ namespace sl
         rightIsPressed = false;
         scrollIsPressed = false;
         empty = true;
-        Vec2f scrollOffset = { 0,0 };
+        scrollOffset = { 0,0 };
+        moveOffset = { 0,0 };
     }
 
     bool Mouse::IsEmpty() const
@@ -35,6 +39,7 @@ namespace sl
 
     void Mouse::OnMouseMove(float x, float y)
     {
+        moveOffset = { x - pos.x, y - pos.y };
         pos = { x, y };
     }
 

@@ -202,10 +202,34 @@ namespace sl
 		SetVP2d(cameraPosition, zoom);
 	}
 
-	void Graphics::BeginView(Vec3f cameraPosition, Vec3f forward, Vec3f up, float fov, float near, float far)
+	void Graphics::BeginView(Vec3f cameraPosition, Vec3f rotation, float fov, float near, float far)
 	{
 		drawMode = DrawMode::Quad3d;
 		cam3dPos = cameraPosition;
+		float pitch = ToRadians(rotation.x);
+		float yaw = ToRadians(rotation.y);
+		float roll = ToRadians(rotation.z);
+
+		Vec3f forward = {
+			cosf(pitch) * sinf(yaw),
+			sinf(pitch),
+			-cosf(pitch) * cosf(yaw)
+		};
+		forward.Normalize();
+
+		Vec3f worldUp = { 0, 1, 0 };
+		Vec3f right = forward.Cross(worldUp).GetNormalized();
+		Vec3f up = right.Cross(forward).GetNormalized();
+
+		if (roll != 0.0f)
+		{
+			float c = cosf(roll);
+			float s = sinf(roll);
+			Vec3f newRight = right * c + up * s;
+			Vec3f newUp = up * c - right * s;
+			right = newRight;
+			up = newUp;
+		}
 		ApplyCanvasChange();
 		SetVP3d(cameraPosition, forward, up, fov, near, far);
 	}
@@ -531,7 +555,7 @@ namespace sl
 		assert(texture && "Failed to draw texture. Texture is nullptr");
 
 		Mat4f model(1.0f);
-		RectF finalUV(0.0f, 1.0f, 0.0f, 1.0f);
+		RectF finalUV(0.0f, 1.0f, 1.0f, 0.0f);
 		rotation.x = ToRadians(rotation.x);
 		rotation.y = ToRadians(rotation.y);
 		rotation.z = ToRadians(rotation.z);
@@ -650,11 +674,6 @@ namespace sl
 
 	void Graphics::SetVP3d(Vec3f cameraPosition, Vec3f forward, Vec3f up, float fov, float near, float far)
 	{
-		forward.Normalize();
-		up.Normalize();
-		Vec3f right = forward.Cross(up).GetNormalized();
-		up = right.Cross(forward);
-		up.Normalize();
 		vpMat.view = LookAt<float>(cameraPosition, cameraPosition + forward, up);
 		vpMat.projection = Perspective<float>(ToRadians(fov), GetCanvasWidth() / GetCanvasHeight(), near, far);
 		BindUniformBuffer(vpMatUbo);

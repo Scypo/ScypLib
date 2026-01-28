@@ -20,17 +20,6 @@ namespace sl
         Sprite2d,
         Quad3d
     };
-    struct Camera2d
-    {
-        Vec2f pos;
-        float zoom;
-    };
-    struct Camera3d
-    {
-        Vec3f pos;
-        Vec3f forward;
-        Vec3f up;
-    };
     class Graphics
     {
     private:
@@ -71,7 +60,7 @@ namespace sl
         void EndFrame(Shader* shader = nullptr);
         void EndFrame(std::vector<Shader*>& shaders);
         void BeginView(Vec2f cameraPosition = { 0.0f, 0.0f }, float zoom = 1.0f);
-        void BeginView(Vec3f cameraPosition = { 0.0f, 0.0f, 0.0f }, Vec3f forward = { 1.0f, 0.0f, 0.0f }, Vec3f up = { 0.0f, 1.0f, 0.0f }, float fov = 90.0f, float near = 0.1f, float far = 1000.0f);
+        void BeginView(Vec3f cameraPosition = { 0.0f, 0.0f, 0.0f }, Vec3f rotation = { 0.0f,0.0f,0.0f }, float fov = 90.0f, float near = 0.1f, float far = 1000.0f);
         void EndView(std::vector<Shader*>& shaders);
         void EndView(Shader* shader = nullptr);
         void SetDrawDepth(float depth);

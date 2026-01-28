@@ -88,6 +88,7 @@ namespace sl
         if (mouse)
         {
             mouse->scrollOffset = { 0,0 };
+            mouse->moveOffset = { 0,0 };
             mouse->empty = true;
         }
         if(kbd) kbd->empty = true;

@@ -17,6 +17,9 @@ namespace sl
         Vec2f GetScrollOffset() const;
         float GetScrollOffsetX() const;
         float GetScrollOffsetY() const;
+        Vec2f GetMoveOffset() const;
+        float GetMoveOffsetX() const;
+        float GetMoveOffsetY() const;
         float GetPosX() const;
         float GetPosY() const;
         bool LeftIsPressed() const;
@@ -39,6 +42,7 @@ namespace sl
     private:
         Vec2f pos = { 0,0 };
         Vec2f scrollOffset = { 0,0 };
+        Vec2f moveOffset = { 0,0 };
         bool leftIsPressed = false;
         bool rightIsPressed = false;
         bool scrollIsPressed = false;
