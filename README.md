@@ -1,6 +1,6 @@
 # ScypLib
 
-**ScypLib** is a fast and lightweight 2D graphics framework written in modern C++20 using OpenGL. It provides a powerful and flexible rendering backend with batching, texture/shader/font management, custom shader support, and basic audio integration — all packed as a simple static library.
+**ScypLib** is a fast and lightweight 2D graphics framework written in modern C++20 using OpenGL that can be built with CMake. It provides a powerful and flexible rendering backend with batching, texture/shader/font management, custom shader support, and basic audio integration — all packed as a simple static library.
 
 ---
 
@@ -15,6 +15,7 @@
 -  Window and input handling via GLFW
 -  Entity component system
 ---
+
 ##  Using ScypLib in Your Project
 
 ### 1. Add Include Directories

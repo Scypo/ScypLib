@@ -29,6 +29,8 @@
 ipch/
 .vs/
 out/
+Debug/
+Release/
 
 # --- CMake-generated ---
 CMakeFiles/

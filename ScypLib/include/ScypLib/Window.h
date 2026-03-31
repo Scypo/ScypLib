@@ -31,7 +31,6 @@ namespace sl
         void Hide();
         void ToggleFullscreen();
         void SwitchCursoreMode(CursorMode mode);
-    private:
         void* GetWindowBackend()const;
     private:
         bool isFullscreen = false;
