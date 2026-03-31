@@ -16,6 +16,17 @@
 -  Entity component system
 ---
 
+## Building with Cmake
+- Copy the repository
+- run these commands
+  ```bash
+  mkdir build
+  cd build
+  cmake ..
+  cmake --build . --config Release
+  ```
+---
+
 ##  Using ScypLib in Your Project
 
 ### 1. Add Include Directories
