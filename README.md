@@ -7,7 +7,7 @@
 ## Features
 
 -  Efficient OpenGL based renderer
--  Batched 2D rendering
+-  Batched 2D rendering with 3D capabilities
 -  Texture and sprite drawing with transform, color tinting, and UV mapping
 -  Custom shader pipeline via uniform and shader storage buffers
 -  Font rendering with stb_truetype
